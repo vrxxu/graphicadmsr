@@ -1,0 +1,66 @@
+import { DatabaseSync } from 'node:sqlite'
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { buildSeed } from './seed'
+
+let db: DatabaseSync | null = null
+
+export function useDb(): DatabaseSync {
+  if (db) return db
+
+  const file = process.env.DB_PATH || resolve(process.cwd(), 'data', 'vacations.sqlite')
+  mkdirSync(dirname(file), { recursive: true })
+  db = new DatabaseSync(file)
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS departments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      parent_id INTEGER REFERENCES departments(id) ON DELETE RESTRICT,
+      sort INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      position TEXT NOT NULL,
+      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT
+    );
+    CREATE TABLE IF NOT EXISTS vacations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'planned',
+      note TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_emp_dep ON employees(department_id);
+    CREATE INDEX IF NOT EXISTS idx_vac_emp ON vacations(employee_id);
+  `)
+
+  const { n } = db.prepare('SELECT COUNT(*) AS n FROM departments').get() as { n: number }
+  if (n === 0) seedDatabase(db)
+
+  return db
+}
+
+export function seedDatabase(conn: DatabaseSync) {
+  const seed = buildSeed()
+  conn.exec('BEGIN')
+  try {
+    const insDep = conn.prepare('INSERT INTO departments (id, name, parent_id, sort) VALUES (?, ?, ?, ?)')
+    for (const d of seed.departments) insDep.run(d.id, d.name, d.parentId, d.sort)
+
+    const insEmp = conn.prepare('INSERT INTO employees (id, full_name, position, department_id) VALUES (?, ?, ?, ?)')
+    for (const e of seed.employees) insEmp.run(e.id, e.fullName, e.position, e.departmentId)
+
+    const insVac = conn.prepare(
+      'INSERT INTO vacations (employee_id, start_date, end_date, status, note) VALUES (?, ?, ?, ?, ?)'
+    )
+    for (const v of seed.vacations) insVac.run(v.employeeId, v.startDate, v.endDate, v.status, v.note)
+    conn.exec('COMMIT')
+  } catch (err) {
+    conn.exec('ROLLBACK')
+    throw err
+  }
+}
