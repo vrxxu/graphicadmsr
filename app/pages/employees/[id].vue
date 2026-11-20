@@ -50,6 +50,7 @@ async function removeVac(v: Vacation) {
             <p class="text-sm mt-1">{{ pathOf(departments, employee.departmentId) }}</p>
           </div>
           <div class="ml-auto flex gap-2">
+            <UButton icon="i-lucide-calendar-days" color="neutral" variant="outline" :to="`/calendar?employee=${employee.id}`">Календарь</UButton>
             <UButton icon="i-lucide-pencil" color="neutral" variant="outline" @click="formOpen = true">Изменить</UButton>
           </div>
         </div>

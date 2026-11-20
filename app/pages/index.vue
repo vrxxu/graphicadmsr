@@ -293,10 +293,12 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
               <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть все</UButton>
               <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть все</UButton>
               <div class="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted">
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-emerald-500" /> Утверждён</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-amber-500" /> Запланирован</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-sky-500" /> Перенесён</span>
-                <span class="flex items-center gap-1"><span class="inline-block h-3 w-0.5 bg-red-500" /> Сегодня</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-emerald-700" /> Утверждён</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-amber-600" /> Запланирован</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-zinc-500" /> Перенесён</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-zinc-400/50" /> Выходные</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-red-600/25" /> Праздничные</span>
+                <span class="flex items-center gap-1"><span class="inline-block h-3 w-0.5 bg-red-600" /> Сегодня</span>
               </div>
             </div>
             <GanttChart

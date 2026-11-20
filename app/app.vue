@@ -5,6 +5,7 @@ const route = useRoute()
 
 const links = computed(() => [
   { label: 'График отпусков', icon: 'i-lucide-calendar-range', to: '/', active: route.path === '/' },
+  { label: 'Мой календарь', icon: 'i-lucide-calendar-days', to: '/calendar', active: route.path.startsWith('/calendar') },
   { label: 'Сотрудники', icon: 'i-lucide-users', to: '/employees', active: route.path.startsWith('/employees') },
   { label: 'Подразделения', icon: 'i-lucide-network', to: '/departments', active: route.path.startsWith('/departments') },
   { label: 'Управление отпусками', icon: 'i-lucide-plane', to: '/vacations', active: route.path.startsWith('/vacations') }
