@@ -2,5 +2,219 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Public Sans', system-ui, sans-serif;
+  --font-sans: 'Onest', 'Public Sans', system-ui, sans-serif;
+}
+
+/* ───────── палитра ───────── */
+:root {
+  --ui-radius: 0.75rem;
+  --page-bg: #f4f2ef;
+  --rail-bg: #ffffff;
+  --ui-primary: var(--color-orange-600);
+}
+
+.dark {
+  /* как на референсе: тёмный фон, чуть более светлые карточки, оранжевый акцент */
+  --page-bg: #1b1b1b;
+  --rail-bg: #161616;
+  --ui-primary: var(--color-orange-500);
+
+  --ui-bg: #262626;
+  --ui-bg-muted: #2b2b2b;
+  --ui-bg-elevated: #2e2e2e;
+  --ui-bg-accented: #383838;
+  --ui-border: #363636;
+  --ui-border-muted: #2f2f2f;
+  --ui-border-accented: #444444;
+}
+
+body {
+  background-color: var(--page-bg);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* ───────── каркас ───────── */
+.rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  width: 76px;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  background: var(--rail-bg);
+  border-right: 1px solid var(--ui-border-muted);
+}
+@media (min-width: 1024px) {
+  .shell { padding-left: 76px; }
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 12px 16px;
+  background: color-mix(in oklab, var(--page-bg) 82%, transparent);
+  backdrop-filter: blur(14px);
+}
+@media (min-width: 640px) { .topbar { padding: 12px 32px; } }
+
+.topbar-title {
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ui-text-highlighted);
+}
+.topbar-sub {
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.date-chip {
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text-toned);
+}
+
+/* логотип */
+.brand {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff8a3d, #f0561d);
+  box-shadow: 0 8px 22px -8px rgb(240 86 29 / 0.7);
+  transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s;
+}
+.brand:hover { transform: rotate(-8deg) scale(1.08); box-shadow: 0 12px 28px -8px rgb(240 86 29 / 0.9); }
+.brand-sm { width: 40px; height: 40px; border-radius: 14px; flex-shrink: 0; }
+
+/* иконки левой панели */
+.rail-link {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: var(--ui-text-muted);
+  transition: background-color .2s, color .2s, transform .2s;
+}
+.rail-link > * { transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+.rail-link:hover { background: color-mix(in oklab, var(--ui-text) 8%, transparent); color: var(--ui-text-highlighted); }
+.rail-link:hover > * { transform: scale(1.18) translateY(-1px); }
+.rail-link:active { transform: scale(0.92); }
+.rail-link.is-active { color: var(--ui-primary); background: color-mix(in oklab, var(--ui-primary) 14%, transparent); }
+.rail-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--ui-primary);
+  box-shadow: 0 0 14px var(--ui-primary);
+  animation: indicator-in .35s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes indicator-in { from { scale: 1 0; } }
+
+/* навигация на узких экранах */
+.mobile-nav { display: flex; gap: 6px; overflow-x: auto; padding: 4px 16px 10px; scrollbar-width: none; }
+.mobile-nav::-webkit-scrollbar { display: none; }
+.mobile-link {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 8px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+  color: var(--ui-text-muted); background: var(--ui-bg); border: 1px solid var(--ui-border);
+  transition: all .2s;
+}
+.mobile-link:active { transform: scale(0.95); }
+.mobile-link.is-active { color: #fff; background: var(--ui-primary); border-color: transparent; }
+
+/* ───────── карточки сводки ───────── */
+.kpi {
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  transition: transform .25s ease, border-color .25s, box-shadow .25s;
+}
+.kpi:hover { transform: translateY(-3px); border-color: var(--ui-border-accented); box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.6); }
+.kpi-value { margin-top: 10px; font-size: 2.25rem; line-height: 1; font-weight: 700; letter-spacing: -0.03em; color: var(--ui-text-highlighted); }
+.kpi-icon { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 12px; color: var(--ui-text-muted); background: color-mix(in oklab, var(--ui-text) 7%, transparent); transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+.kpi:hover .kpi-icon { transform: rotate(-10deg) scale(1.12); }
+.kpi[data-tone='gold'] .kpi-icon { color: #e9b949; background: rgb(233 185 73 / 0.14); }
+.kpi[data-tone='gold'] .kpi-value { color: #e9b949; }
+.kpi[data-tone='green'] .kpi-icon { color: #3fb27f; background: rgb(63 178 127 / 0.14); }
+.kpi[data-tone='green'] .kpi-value { color: #3fb27f; }
+.kpi[data-tone='accent'] {
+  border-color: color-mix(in oklab, var(--ui-primary) 45%, var(--ui-border));
+  background: linear-gradient(145deg, color-mix(in oklab, var(--ui-primary) 20%, var(--ui-bg)), var(--ui-bg) 70%);
+}
+.kpi[data-tone='accent'] .kpi-icon { color: #fff; background: var(--ui-primary); }
+.kpi[data-tone='accent'] .kpi-value { color: var(--ui-primary); }
+
+/* ───────── анимации кнопок ───────── */
+
+/* основные (залитые оранжевые): блик пробегает слева направо + свечение */
+button.bg-primary, a.bg-primary { position: relative; overflow: hidden; isolation: isolate; box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--ui-primary) 80%, transparent); }
+button.bg-primary:hover, a.bg-primary:hover { background-color: color-mix(in oklab, var(--ui-primary) 88%, white); box-shadow: 0 12px 26px -10px var(--ui-primary); }
+button.bg-primary::after, a.bg-primary::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.38) 50%, transparent 70%);
+  translate: -130% 0; transition: translate .65s ease;
+}
+button.bg-primary:hover::after, a.bg-primary:hover::after { translate: 130% 0; }
+
+/* контурные кнопки: рамка подсвечивается оранжевым */
+button[class*='ring-accented'], a[class*='ring-accented'] { transition: all .2s ease; }
+button[class*='ring-accented']:hover, a[class*='ring-accented']:hover {
+  --tw-ring-color: color-mix(in oklab, var(--ui-primary) 70%, transparent);
+  color: var(--ui-text-highlighted);
+  box-shadow: 0 8px 20px -12px var(--ui-primary);
+}
+
+/* «мягкие» кнопки: заливка наливается снизу */
+button[class*='bg-elevated'], a[class*='bg-elevated'] { background-image: linear-gradient(var(--ui-primary), var(--ui-primary)); background-repeat: no-repeat; background-size: 100% 0; background-position: bottom; transition: background-size .3s ease, color .3s ease, transform .2s; }
+button[class*='bg-elevated']:hover, a[class*='bg-elevated']:hover { background-size: 100% 100%; color: #fff; }
+
+/* иконки внутри кнопок — у каждой своё движение */
+[class*='fx-'] > :first-child { transition: translate .25s ease, rotate .45s cubic-bezier(.4, 0, .2, 1), scale .25s cubic-bezier(.34, 1.56, .64, 1); }
+.fx-spin:hover > :first-child { rotate: -360deg; }
+.fx-rot90:hover > :first-child { rotate: 90deg; scale: 1.15; }
+.fx-pop:hover > :first-child { scale: 1.3; }
+.fx-nudge-l:hover > :first-child { translate: -4px 0; }
+.fx-nudge-r:hover > :first-child { translate: 4px 0; }
+.fx-squeeze:hover > :first-child { scale: 1 0.7; }
+.fx-stretch:hover > :first-child { scale: 1 1.25; }
+.fx-wiggle:hover > :first-child { animation: fx-wiggle .55s ease; }
+.fx-shake:hover > :first-child { animation: fx-shake .5s ease; }
+@keyframes fx-wiggle { 0%, 100% { rotate: 0deg; } 25% { rotate: -20deg; } 50% { rotate: 16deg; } 75% { rotate: -8deg; } }
+@keyframes fx-shake { 0%, 100% { translate: 0 0; rotate: 0deg; } 20% { translate: -2px 0; rotate: -10deg; } 40% { translate: 2px 0; rotate: 10deg; } 60% { translate: -2px 0; rotate: -6deg; } 80% { translate: 2px 0; rotate: 6deg; } }
+
+/* ───────── диаграмма ───────── */
+.gantt-bar { transform-origin: left center; animation: bar-in .55s cubic-bezier(.22, 1, .36, 1) both; }
+.gantt-bar:hover { translate: 0 -1px; box-shadow: 0 6px 16px -4px rgb(0 0 0 / 0.55); z-index: 25; }
+@keyframes bar-in { from { scale: 0 1; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

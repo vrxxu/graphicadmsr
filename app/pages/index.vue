@@ -165,6 +165,14 @@ const summary = computed(() => {
   }
 })
 
+const kpis = computed(() => [
+  { label: 'Всего сотрудников', value: summary.value.total, icon: 'i-lucide-users', tone: '' },
+  { label: `В отпуске на ${filterDate.value ? formatDate(filterDate.value) : '—'}`, value: summary.value.onVacation, icon: 'i-lucide-plane', tone: 'gold' },
+  { label: 'Не в отпуске', value: summary.value.notOnVacation, icon: 'i-lucide-briefcase', tone: 'green' },
+  { label: `Без отпусков в ${year.value} г.`, value: summary.value.withoutYear, icon: 'i-lucide-calendar-x', tone: '' },
+  { label: 'Макс. одновременно в отпуске', value: summary.value.maxSimultaneous, icon: 'i-lucide-flame', tone: 'accent' }
+])
+
 // ---------- пересечения: отображение ----------
 const showAllOverlaps = ref(false)
 const overlapView = computed(() => {
@@ -203,7 +211,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-5">
     <div v-if="status === 'pending' && !employees.length" class="py-20 text-center text-muted">Загрузка данных…</div>
 
     <template v-else>
@@ -216,9 +224,9 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
 
           <UFormField label="Год">
             <div class="flex items-center gap-1">
-              <UButton icon="i-lucide-chevron-left" color="neutral" variant="outline" aria-label="Предыдущий год" @click="year--" />
+              <UButton class="fx-nudge-l" icon="i-lucide-chevron-left" color="neutral" variant="outline" aria-label="Предыдущий год" @click="year--" />
               <UInput v-model.number="year" type="number" min="2000" max="2100" class="w-24" :ui="{ base: 'text-center' }" />
-              <UButton icon="i-lucide-chevron-right" color="neutral" variant="outline" aria-label="Следующий год" @click="year++" />
+              <UButton class="fx-nudge-r" icon="i-lucide-chevron-right" color="neutral" variant="outline" aria-label="Следующий год" @click="year++" />
             </div>
           </UFormField>
 
@@ -235,18 +243,18 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
           </UFormField>
 
           <div class="flex gap-2">
-            <UButton icon="i-lucide-rotate-ccw" color="neutral" variant="outline" @click="resetFilters">Сбросить</UButton>
+            <UButton class="fx-spin" icon="i-lucide-rotate-ccw" color="neutral" variant="outline" @click="resetFilters">Сбросить</UButton>
           </div>
         </div>
       </UCard>
 
       <div class="grid gap-4 lg:grid-cols-[18rem_1fr] items-start">
         <!-- дерево -->
-        <UCard :ui="{ body: 'p-2 sm:p-3' }" class="lg:sticky lg:top-20">
+        <UCard :ui="{ body: 'p-2 sm:p-3' }" class="lg:sticky lg:top-24">
           <template #header>
             <div class="flex items-center justify-between gap-2">
               <span class="font-semibold">Структура</span>
-              <UButton size="xs" color="neutral" variant="soft" icon="i-lucide-building-2" @click="selectedId = null">
+              <UButton class="fx-pop" size="xs" color="neutral" variant="soft" icon="i-lucide-building-2" @click="selectedId = null">
                 Вся администрация
               </UButton>
             </div>
@@ -264,41 +272,28 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
               <span class="font-medium text-highlighted">{{ breadcrumb }}</span>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-              <UCard :ui="{ body: 'p-3 sm:p-3' }">
-                <div class="text-xs text-muted">Всего сотрудников</div>
-                <div class="text-2xl font-semibold">{{ summary.total }}</div>
-              </UCard>
-              <UCard :ui="{ body: 'p-3 sm:p-3' }">
-                <div class="text-xs text-muted">В отпуске на {{ filterDate ? formatDate(filterDate) : '—' }}</div>
-                <div class="text-2xl font-semibold text-warning">{{ summary.onVacation }}</div>
-              </UCard>
-              <UCard :ui="{ body: 'p-3 sm:p-3' }">
-                <div class="text-xs text-muted">Не в отпуске</div>
-                <div class="text-2xl font-semibold text-success">{{ summary.notOnVacation }}</div>
-              </UCard>
-              <UCard :ui="{ body: 'p-3 sm:p-3' }">
-                <div class="text-xs text-muted">Без отпусков в {{ year }} г.</div>
-                <div class="text-2xl font-semibold">{{ summary.withoutYear }}</div>
-              </UCard>
-              <UCard :ui="{ body: 'p-3 sm:p-3' }">
-                <div class="text-xs text-muted">Макс. одновременно в отпуске</div>
-                <div class="text-2xl font-semibold text-error">{{ summary.maxSimultaneous }}</div>
-              </UCard>
+              <div v-for="k in kpis" :key="k.label" class="kpi" :data-tone="k.tone">
+                <div class="flex items-start justify-between gap-2">
+                  <span class="text-xs font-medium text-muted leading-snug">{{ k.label }}</span>
+                  <span class="kpi-icon"><UIcon :name="k.icon" class="size-4" /></span>
+                </div>
+                <div class="kpi-value">{{ k.value }}</div>
+              </div>
             </div>
           </div>
 
           <!-- диаграмма -->
           <div>
             <div class="mb-2 flex flex-wrap items-center gap-2">
-              <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть все</UButton>
-              <UButton size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть все</UButton>
+              <UButton class="fx-squeeze" size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть все</UButton>
+              <UButton class="fx-stretch" size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть все</UButton>
               <div class="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted">
-                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-emerald-700" /> Утверждён</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-amber-600" /> Запланирован</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-zinc-500" /> Перенесён</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-zinc-400/50" /> Выходные</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 bg-red-600/25" /> Праздничные</span>
-                <span class="flex items-center gap-1"><span class="inline-block h-3 w-0.5 bg-red-600" /> Сегодня</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-emerald-500" /> Утверждён</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-amber-400" /> Запланирован</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-neutral-500" /> Перенесён</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-stone-300/60 dark:bg-stone-600/60" /> Выходные</span>
+                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-rose-500/25" /> Праздничные</span>
+                <span class="flex items-center gap-1"><span class="inline-block h-3 w-px bg-orange-500" /> Сегодня</span>
               </div>
             </div>
             <GanttChart
@@ -379,7 +374,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
       <template #footer>
         <div v-if="details" class="flex gap-2 w-full justify-end">
           <UButton color="neutral" variant="outline" :to="`/employees/${details.employee.id}`">Карточка сотрудника</UButton>
-          <UButton :to="`/vacations?edit=${details.vacation.id}`" icon="i-lucide-pencil">Редактировать</UButton>
+          <UButton class="fx-wiggle" :to="`/vacations?edit=${details.vacation.id}`" icon="i-lucide-pencil">Редактировать</UButton>
         </div>
       </template>
     </UModal>

@@ -67,7 +67,7 @@ async function doDelete() {
       <h1 class="text-xl font-semibold mr-auto">Сотрудники</h1>
       <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по ФИО или должности" class="w-72" />
       <USelectMenu v-model="deptModel" :items="deptItems" value-key="value" class="w-80" />
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
+      <UButton class="fx-rot90" icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
     </div>
 
     <UCard :ui="{ body: 'p-0 sm:p-0' }">
@@ -79,8 +79,8 @@ async function doDelete() {
         </template>
         <template #actions-cell="{ row }">
           <div class="flex justify-end gap-1" @click.stop>
-            <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
-            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="toDelete = row.original; confirmOpen = true" />
+            <UButton class="fx-wiggle" icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
+            <UButton class="fx-shake" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="toDelete = row.original; confirmOpen = true" />
           </div>
         </template>
         <template #empty>

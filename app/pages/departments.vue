@@ -83,8 +83,8 @@ async function reset() {
   <div class="max-w-4xl mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <h1 class="text-xl font-semibold mr-auto">Организационная структура</h1>
-      <UButton color="neutral" variant="outline" icon="i-lucide-database-backup" @click="resetOpen = true">Сбросить демо-данные</UButton>
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
+      <UButton class="fx-spin" color="neutral" variant="outline" icon="i-lucide-database-backup" @click="resetOpen = true">Сбросить демо-данные</UButton>
+      <UButton class="fx-rot90" icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
     </div>
 
     <UCard :ui="{ body: 'p-2 sm:p-2' }">
@@ -104,9 +104,9 @@ async function reset() {
             </div>
           </div>
           <div class="ml-auto flex shrink-0">
-            <UButton icon="i-lucide-folder-plus" color="neutral" variant="ghost" size="sm" aria-label="Добавить вложенное" @click="openForm(null, n.id)" />
-            <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(departments.find(d => d.id === n.id)!)" />
-            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(departments.find(d => d.id === n.id)!)" />
+            <UButton class="fx-pop" icon="i-lucide-folder-plus" color="neutral" variant="ghost" size="sm" aria-label="Добавить вложенное" @click="openForm(null, n.id)" />
+            <UButton class="fx-wiggle" icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(departments.find(d => d.id === n.id)!)" />
+            <UButton class="fx-shake" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(departments.find(d => d.id === n.id)!)" />
           </div>
         </li>
       </ul>

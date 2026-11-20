@@ -46,7 +46,7 @@ export function errorMessage(e: unknown): string {
 }
 
 export const STATUS_COLORS = {
-  planned: { bar: 'bg-amber-600', badge: 'warning' },
-  approved: { bar: 'bg-emerald-700', badge: 'success' },
-  moved: { bar: 'bg-zinc-500', badge: 'neutral' }
+  planned: { bar: 'bg-amber-400 text-amber-950', badge: 'warning' },
+  approved: { bar: 'bg-emerald-500 text-white', badge: 'success' },
+  moved: { bar: 'bg-neutral-500 text-white', badge: 'neutral' }
 } as const

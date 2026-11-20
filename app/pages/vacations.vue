@@ -89,7 +89,7 @@ async function remove(v: Vacation) {
       <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по ФИО" class="w-64" />
       <USelect v-model="year" :items="yearItems" class="w-36" />
       <USelect v-model="statusFilter" :items="statusItems" class="w-48" />
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить период</UButton>
+      <UButton class="fx-rot90" icon="i-lucide-plus" @click="openForm(null)">Добавить период</UButton>
     </div>
 
     <UCard :ui="{ body: 'p-0 sm:p-0' }">
@@ -103,8 +103,8 @@ async function remove(v: Vacation) {
         </template>
         <template #actions-cell="{ row }">
           <div class="flex justify-end gap-1">
-            <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
-            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(row.original)" />
+            <UButton class="fx-wiggle" icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
+            <UButton class="fx-shake" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(row.original)" />
           </div>
         </template>
         <template #empty>
