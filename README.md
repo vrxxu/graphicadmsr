@@ -10,12 +10,13 @@
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://127.0.0.1:3000
 ```
 
 Сборка и запуск в production-режиме:
 
 ```bash
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 npm run build
 node .output/server/index.mjs
 ```
