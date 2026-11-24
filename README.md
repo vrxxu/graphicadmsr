@@ -10,7 +10,7 @@
 
 ```bash
 npm install
-npm run dev        # http://127.0.0.1:3000
+npm run dev        # http://localhost:3000
 ```
 
 Сборка и запуск в production-режиме:

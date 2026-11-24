@@ -2,83 +2,104 @@
 import { ru } from '@nuxt/ui/locale'
 
 const route = useRoute()
+const colorMode = useColorMode()
 
 const links = computed(() => [
-  { label: 'График отпусков', icon: 'i-lucide-calendar-range', to: '/', active: route.path === '/' },
+  { label: 'График отпусков', icon: 'i-lucide-chart-gantt', to: '/', active: route.path === '/' },
   { label: 'Мой календарь', icon: 'i-lucide-calendar-days', to: '/calendar', active: route.path.startsWith('/calendar') },
   { label: 'Сотрудники', icon: 'i-lucide-users', to: '/employees', active: route.path.startsWith('/employees') },
   { label: 'Подразделения', icon: 'i-lucide-network', to: '/departments', active: route.path.startsWith('/departments') },
-  { label: 'Управление отпусками', icon: 'i-lucide-plane', to: '/vacations', active: route.path.startsWith('/vacations') }
+  { label: 'Отпуска', icon: 'i-lucide-tree-palm', to: '/vacations', active: route.path.startsWith('/vacations') }
 ])
 
-// дата только на клиенте, чтобы не ловить расхождение при гидратации
-const dateLabel = ref('')
-onMounted(() => {
-  dateLabel.value = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-})
+const isDark = computed(() => colorMode.value === 'dark')
+function toggleTheme() {
+  colorMode.preference = isDark.value ? 'light' : 'dark'
+}
 </script>
 
 <template>
   <UApp :locale="ru">
-    <!-- левая панель с иконками (десктоп) -->
-    <aside class="rail hidden lg:flex">
-      <NuxtLink to="/" class="brand" aria-label="График отпусков">
-        <UIcon name="i-lucide-palmtree" class="size-6" />
-      </NuxtLink>
-
-      <nav class="flex flex-col items-center gap-2 mt-6">
-        <UTooltip
-          v-for="l in links"
-          :key="l.to"
-          :text="l.label"
-          :content="{ side: 'right', sideOffset: 14 }"
+    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 lg:flex">
+      <!-- левая стенка: узкая колонка иконок, при наведении плавно раскрывается с подписями -->
+      <aside class="relative hidden w-16 shrink-0 lg:block">
+        <div
+          class="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col gap-6 overflow-hidden border-r border-default bg-default p-2.5 transition-[width,box-shadow] duration-300 ease-out hover:w-56 hover:shadow-2xl focus-within:w-56 focus-within:shadow-2xl"
         >
-          <NuxtLink :to="l.to" class="rail-link" :class="{ 'is-active': l.active }" :aria-label="l.label">
-            <UIcon :name="l.icon" class="size-5" />
+          <NuxtLink to="/" class="flex h-10 items-center gap-3 rounded-lg px-1.5" aria-label="На главную">
+            <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-600 text-white">
+              <UIcon name="i-lucide-calendar-range" class="size-4" />
+            </span>
+            <span class="whitespace-nowrap text-sm font-semibold opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">Отпуска</span>
           </NuxtLink>
-        </UTooltip>
-      </nav>
 
-      <div class="mt-auto">
-        <UColorModeButton color="neutral" variant="ghost" class="fx-pop" />
+          <nav class="flex flex-col gap-1">
+            <NuxtLink
+              v-for="l in links"
+              :key="l.to"
+              :to="l.to"
+              :aria-label="l.label"
+              class="relative flex h-10 items-center gap-3 rounded-lg px-2.5 transition-colors duration-200"
+              :class="l.active
+                ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400'
+                : 'text-muted hover:bg-elevated hover:text-highlighted'"
+            >
+              <span
+                class="absolute -left-2.5 top-1/2 w-1 -translate-y-1/2 rounded-r-full bg-emerald-600 transition-all duration-300"
+                :class="l.active ? 'h-5 opacity-100' : 'h-0 opacity-0'"
+              />
+              <UIcon :name="l.icon" class="size-5 shrink-0 transition-transform duration-200 group-hover:scale-105" />
+              <span class="whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">{{ l.label }}</span>
+            </NuxtLink>
+          </nav>
+
+          <button
+            type="button"
+            class="mt-auto flex h-10 items-center gap-3 rounded-lg px-2.5 text-muted transition-colors duration-200 hover:bg-elevated hover:text-highlighted"
+            aria-label="Сменить тему"
+            @click="toggleTheme"
+          >
+            <ClientOnly>
+              <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="size-5 shrink-0" />
+              <template #fallback><span class="size-5 shrink-0" /></template>
+            </ClientOnly>
+            <span class="whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">Сменить тему</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="min-w-0 flex-1">
+        <!-- узкие экраны: компактная полоса сверху -->
+        <header class="sticky top-0 z-40 border-b border-default bg-default/90 backdrop-blur lg:hidden">
+          <div class="flex items-center gap-2 px-3 py-2">
+            <span class="grid size-7 place-items-center rounded-lg bg-emerald-600 text-white">
+              <UIcon name="i-lucide-calendar-range" class="size-4" />
+            </span>
+            <span class="text-sm font-semibold">Отпуска</span>
+            <UColorModeButton class="ml-auto" />
+          </div>
+          <nav class="flex gap-1 overflow-x-auto px-3 pb-2">
+            <UButton
+              v-for="l in links"
+              :key="l.to"
+              :to="l.to"
+              :icon="l.icon"
+              size="sm"
+              class="shrink-0"
+              :color="l.active ? 'primary' : 'neutral'"
+              :variant="l.active ? 'soft' : 'ghost'"
+            >
+              {{ l.label }}
+            </UButton>
+          </nav>
+        </header>
+
+        <main>
+          <UContainer class="max-w-[1600px] py-5">
+            <NuxtPage />
+          </UContainer>
+        </main>
       </div>
-    </aside>
-
-    <div class="shell">
-      <!-- верхняя строка: заголовок отдельно, навигации в ней больше нет -->
-      <header class="topbar">
-        <div class="lg:hidden">
-          <NuxtLink to="/" class="brand brand-sm" aria-label="График отпусков">
-            <UIcon name="i-lucide-palmtree" class="size-5" />
-          </NuxtLink>
-        </div>
-        <div class="min-w-0">
-          <h1 class="topbar-title">График отпусков</h1>
-          <p class="topbar-sub">Администрация Сургутского района</p>
-        </div>
-
-        <div class="ml-auto flex items-center gap-3">
-          <span v-if="dateLabel" class="date-chip hidden sm:inline-flex">
-            <UIcon name="i-lucide-calendar" class="size-4 text-primary" />
-            {{ dateLabel }}
-          </span>
-          <div class="lg:hidden"><UColorModeButton color="neutral" variant="ghost" /></div>
-        </div>
-      </header>
-
-      <!-- навигация для планшетов и телефонов -->
-      <div class="lg:hidden">
-      <nav class="mobile-nav">
-        <NuxtLink v-for="l in links" :key="l.to" :to="l.to" class="mobile-link" :class="{ 'is-active': l.active }">
-          <UIcon :name="l.icon" class="size-4" />
-          {{ l.label }}
-        </NuxtLink>
-      </nav>
-      </div>
-
-      <main class="px-4 sm:px-8 pb-10 pt-2">
-        <NuxtPage />
-      </main>
     </div>
   </UApp>
 </template>

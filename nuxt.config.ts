@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['~/assets/css/main.css'],
   devtools: { enabled: false },
-  colorMode: { preference: 'dark', fallback: 'dark' },
+  colorMode: { preference: 'system' },
   devServer: { host: '127.0.0.1', port: 3000 },
   app: {
     head: {

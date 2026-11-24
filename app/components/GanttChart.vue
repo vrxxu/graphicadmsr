@@ -132,21 +132,22 @@ function barTitle(v: Vacation) {
 </script>
 
 <template>
-  <div class="gantt overflow-auto rounded-2xl border border-default bg-default shadow-xs max-h-[68vh]">
+  <div class="gantt overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-default max-h-[68vh]">
     <div :style="{ width: `${LEFT + timelineWidth}px` }" class="relative">
       <!-- шапка -->
-      <div class="sticky top-0 z-30 flex bg-stone-50 dark:bg-[#202020] border-b border-default">
+      <div class="sticky top-0 z-30 flex bg-default border-b border-zinc-300 dark:border-zinc-700">
         <div
-          class="sticky left-0 z-40 shrink-0 bg-stone-50 dark:bg-[#202020] border-r border-default px-4 flex items-end pb-2 text-[11px] font-medium uppercase tracking-wider text-muted"
+          class="sticky left-0 z-40 shrink-0 bg-default border-r border-zinc-300 dark:border-zinc-700 px-4 flex items-end pb-2 text-xs font-medium text-muted gantt-left-shadow"
           :style="{ width: `${LEFT}px` }"
         >
           Подразделение / сотрудник
         </div>
-        <div class="relative" :style="{ width: `${timelineWidth}px`, height: month >= 0 ? '56px' : '32px' }">
+        <div class="relative" :style="{ width: `${timelineWidth}px`, height: month >= 0 ? '58px' : '34px' }">
           <div
             v-for="m in months"
             :key="m.m"
-            class="absolute top-0 h-7 border-l border-default px-2 text-xs font-semibold leading-7 truncate text-highlighted"
+            class="absolute top-0 h-8 border-l border-zinc-300 dark:border-zinc-700 px-2 text-xs font-semibold leading-8 truncate"
+            :class="m.m % 2 ? 'bg-zinc-100/80 dark:bg-zinc-800/50' : ''"
             :style="{ left: `${m.left}px`, width: `${m.width}px` }"
           >
             {{ m.label }}
@@ -155,15 +156,15 @@ function barTitle(v: Vacation) {
             <div
               v-for="d in days"
               :key="d.n"
-              class="absolute top-7 h-7 text-center text-[10px] leading-[13px] pt-0.5 border-l border-t border-default/70"
-              :class="[
-                d.off ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'text-muted',
-                d.n === todayNum ? '!bg-orange-500 !text-white font-bold rounded-b-md' : ''
-              ]"
+              class="absolute top-8 h-[26px] text-center text-[10px] leading-[12px] pt-0.5 border-l border-t border-zinc-200 dark:border-zinc-700"
+              :class="d.off ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-muted'"
               :style="{ left: `${(d.n - rangeStart) * dw}px`, width: `${dw}px` }"
               :title="d.title"
             >
-              {{ d.num }}<br>{{ d.wd }}
+              <span
+                class="inline-block min-w-4 rounded-full px-0.5"
+                :class="d.n === todayNum ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold' : ''"
+              >{{ d.num }}</span><br>{{ d.wd }}
             </div>
           </template>
         </div>
@@ -176,36 +177,34 @@ function barTitle(v: Vacation) {
           <div
             v-for="m in months"
             :key="m.m"
-            class="absolute top-0 bottom-0 border-l border-default"
-            :class="m.m % 2 ? 'bg-stone-500/[0.04]' : ''"
+            class="absolute top-0 bottom-0 border-l border-zinc-300 dark:border-zinc-700"
+            :class="m.m % 2 ? 'bg-zinc-500/[0.05]' : ''"
             :style="{ left: `${m.left}px`, width: `${m.width}px` }"
           />
           <div
             v-for="n in extraOffDays"
             :key="n"
-            class="absolute top-0 bottom-0 bg-rose-500/10"
+            class="absolute top-0 bottom-0 bg-red-500/12"
             :style="{ left: `${(n - rangeStart) * dw}px`, width: `${dw}px` }"
           />
           <div
             v-if="filterLeft !== null"
-            class="absolute top-0 bottom-0 bg-stone-900/5 dark:bg-white/10 border-x border-stone-400/70"
+            class="absolute top-0 bottom-0 bg-zinc-900/10 dark:bg-white/10 border-x border-zinc-500"
             :style="{ left: `${filterLeft}px`, width: `${dw}px` }"
           />
-          <div v-if="todayLeft !== null" class="absolute top-0 bottom-0 w-px bg-orange-500 shadow-[0_0_10px_rgb(249_115_22/0.9)]" :style="{ left: `${todayLeft}px` }">
-            <span class="absolute top-0 -left-[3px] size-[7px] rounded-full bg-orange-500" />
-          </div>
+          <div v-if="todayLeft !== null" class="absolute top-0 bottom-0 w-0.5 bg-red-500" :style="{ left: `${todayLeft}px` }" />
         </div>
 
         <template v-for="row in rows" :key="row.type === 'group' ? `g${row.id}` : `e${row.employee.id}`">
           <!-- заголовок подразделения -->
           <div
             v-if="row.type === 'group'"
-            class="flex bg-stone-100 dark:bg-[#2d2d2d] border-b border-default"
+            class="flex bg-zinc-100 dark:bg-zinc-800/70 border-b border-zinc-300 dark:border-zinc-700"
             :style="{ height: `${ROW_H - 4}px` }"
           >
             <div
-              class="sticky left-0 z-20 shrink-0 bg-stone-100 dark:bg-[#2d2d2d] border-r border-default flex items-center gap-1 pr-3"
-              :style="{ width: `${LEFT}px`, paddingLeft: `${6 + row.depth * 14}px` }"
+              class="sticky left-0 z-20 shrink-0 bg-zinc-100 dark:bg-zinc-800 border-r border-zinc-300 dark:border-zinc-700 flex items-center gap-1 pr-3 gantt-left-shadow"
+              :style="{ width: `${LEFT}px`, paddingLeft: `${8 + row.depth * 14}px` }"
             >
               <UButton
                 :icon="row.collapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
@@ -216,20 +215,20 @@ function barTitle(v: Vacation) {
                 :aria-label="row.collapsed ? 'Развернуть' : 'Свернуть'"
                 @click="emit('toggle', row.id)"
               />
-              <span class="text-sm font-semibold tracking-tight truncate" :title="row.name">{{ row.name }}</span>
-              <UBadge v-if="row.warning" color="warning" variant="solid" size="sm" icon="i-lucide-triangle-alert" class="shrink-0" title="Превышен порог одновременного отсутствия" />
-              <UBadge color="neutral" variant="soft" size="sm" class="ml-auto shrink-0">{{ row.count }}</UBadge>
+              <span class="text-sm font-semibold truncate" :title="row.name">{{ row.name }}</span>
+              <UBadge v-if="row.warning" color="warning" variant="solid" size="sm" icon="i-lucide-triangle-alert" class="shrink-0 rounded-full" title="Превышен порог одновременного отсутствия" />
+              <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto shrink-0 rounded-full">{{ row.count }}</UBadge>
             </div>
             <div class="flex-1" />
           </div>
 
           <!-- сотрудник -->
-          <div v-else class="flex border-b border-default/60 hover:bg-stone-500/[0.04] transition-colors" :style="{ height: `${ROW_H}px` }">
+          <div v-else class="flex border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-500/5" :style="{ height: `${ROW_H}px` }">
             <div
-              class="sticky left-0 z-20 shrink-0 bg-default border-r border-default flex flex-col justify-center pr-3 leading-tight"
-              :style="{ width: `${LEFT}px`, paddingLeft: `${30 + row.depth * 14}px` }"
+              class="sticky left-0 z-20 shrink-0 bg-default border-r border-zinc-300 dark:border-zinc-700 flex flex-col justify-center pr-3 leading-tight gantt-left-shadow"
+              :style="{ width: `${LEFT}px`, paddingLeft: `${32 + row.depth * 14}px` }"
             >
-              <button class="text-left text-sm truncate hover:underline" :title="row.employee.fullName" @click="emit('open-employee', row.employee.id)">
+              <button class="text-left text-sm font-medium truncate hover:underline" :title="row.employee.fullName" @click="emit('open-employee', row.employee.id)">
                 {{ row.employee.fullName }}
               </button>
               <span class="text-[11px] text-muted truncate">{{ row.employee.position }}</span>
@@ -239,11 +238,11 @@ function barTitle(v: Vacation) {
                 <button
                   v-if="bar(v)"
                   type="button"
-                  class="gantt-bar absolute top-2 h-6 z-[15] text-[10px] font-medium px-2 truncate text-left rounded-md ring-1 ring-inset ring-black/10 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-stone-900 dark:focus-visible:outline-white"
+                  class="absolute top-2 h-6 z-[15] text-[10px] font-medium text-white px-2 truncate text-left ring-1 ring-inset ring-black/15 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"
                   :class="[
                     STATUS_COLORS[v.status].bar,
-                    bar(v)!.cutLeft ? '!rounded-l-none' : '',
-                    bar(v)!.cutRight ? '!rounded-r-none' : ''
+                    bar(v)!.cutLeft ? 'rounded-l-none' : 'rounded-l-md',
+                    bar(v)!.cutRight ? 'rounded-r-none' : 'rounded-r-md'
                   ]"
                   :style="{ left: `${bar(v)!.left}px`, width: `${bar(v)!.width}px` }"
                   :title="barTitle(v)"
@@ -266,7 +265,10 @@ function barTitle(v: Vacation) {
 
 <style scoped>
 .gantt {
-  --gantt-weekend: color-mix(in oklab, var(--ui-text-muted) 7%, transparent);
-  --gantt-line: color-mix(in oklab, var(--ui-text-muted) 11%, transparent);
+  --gantt-weekend: color-mix(in oklab, var(--ui-text-muted) 11%, transparent);
+  --gantt-line: color-mix(in oklab, var(--ui-text-muted) 20%, transparent);
+}
+.gantt-left-shadow {
+  box-shadow: 6px 0 8px -6px rgb(0 0 0 / 0.18);
 }
 </style>

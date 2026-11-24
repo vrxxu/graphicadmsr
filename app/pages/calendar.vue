@@ -102,16 +102,16 @@ function cellClass(n: number) {
   const classes: string[] = []
 
   if (v) {
-    classes.push(STATUS_COLORS[v.status].bar, 'font-medium')
+    classes.push(STATUS_COLORS[v.status].bar, 'text-white')
     // нерабочие дни внутри отпуска — приглушены
     if (off) classes.push('opacity-60')
   } else if (info?.kind === 'holiday' || info?.kind === 'dayoff') {
-    classes.push('bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold')
+    classes.push('bg-red-600/15 text-red-700 dark:text-red-400 font-semibold')
   } else if (off) {
-    classes.push('bg-stone-500/[0.06] text-rose-600/80 dark:text-rose-400')
+    classes.push('bg-zinc-500/10 text-red-700 dark:text-red-400')
   }
   if (info?.kind === 'short') classes.push('underline decoration-dotted underline-offset-2')
-  if (n === todayNum) classes.push('ring-2 ring-orange-500 ring-inset font-bold rounded-md')
+  if (n === todayNum) classes.push('ring-2 ring-zinc-900 dark:ring-white ring-inset font-bold')
   return classes
 }
 
@@ -127,7 +127,7 @@ function cellTitle(n: number) {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="space-y-4">
     <div class="flex flex-wrap items-end gap-3">
       <h1 class="text-xl font-semibold mr-auto">Мой календарь</h1>
     </div>
@@ -147,9 +147,9 @@ function cellTitle(n: number) {
           <USelect v-model="count" :items="countItems" class="w-36" />
         </UFormField>
         <div class="flex gap-1 md:col-span-2 xl:col-span-1">
-          <UButton class="fx-nudge-l" icon="i-lucide-chevron-left" color="neutral" variant="outline" aria-label="Назад" @click="shift(-1)" />
+          <UButton icon="i-lucide-chevron-left" color="neutral" variant="outline" aria-label="Назад" @click="shift(-1)" />
           <UButton color="neutral" variant="outline" @click="goToday">Сегодня</UButton>
-          <UButton class="fx-nudge-r" icon="i-lucide-chevron-right" color="neutral" variant="outline" aria-label="Вперёд" @click="shift(1)" />
+          <UButton icon="i-lucide-chevron-right" color="neutral" variant="outline" aria-label="Вперёд" @click="shift(1)" />
         </div>
       </div>
     </UCard>
@@ -174,13 +174,13 @@ function cellTitle(n: number) {
 
       <!-- легенда -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 rounded-sm bg-emerald-500" /> Отпуск утверждён</span>
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 rounded-sm bg-amber-400" /> Отпуск запланирован</span>
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 rounded-sm bg-neutral-500" /> Отпуск перенесён</span>
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 rounded-sm bg-stone-500/15" /> Суббота, воскресенье</span>
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 rounded-sm bg-rose-500/25" /> Праздничный / перенесённый выходной</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 bg-emerald-700" /> Отпуск утверждён</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 bg-amber-600" /> Отпуск запланирован</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 bg-zinc-500" /> Отпуск перенесён</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 bg-zinc-500/20" /> Суббота, воскресенье</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 bg-red-600/25" /> Праздничный / перенесённый выходной</span>
         <span class="flex items-center gap-1.5"><span class="underline decoration-dotted">12</span> Сокращённый день</span>
-        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 ring-2 ring-inset ring-orange-500 rounded-sm" /> Сегодня</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block size-3.5 ring-2 ring-inset ring-zinc-900 dark:ring-white" /> Сегодня</span>
       </div>
 
       <!-- месяцы -->
@@ -188,20 +188,20 @@ function cellTitle(n: number) {
         <div
           v-for="mo in shownMonths"
           :key="`${mo.year}-${mo.m}`"
-          class="overflow-hidden rounded-2xl border border-default bg-default shadow-xs"
+          class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-default"
         >
-          <div class="px-4 py-2.5 font-semibold tracking-tight bg-stone-50 dark:bg-[#202020] border-b border-default">
+          <div class="px-3 py-2 text-sm font-semibold border-b border-zinc-200 dark:border-zinc-800">
             {{ MONTHS_NOM[mo.m] }} {{ mo.year }}
           </div>
-          <div class="grid grid-cols-7 text-center text-[11px] font-medium text-muted border-b border-default/70">
-            <div v-for="(w, i) in WEEKDAYS_SHORT" :key="w" class="py-1" :class="i >= 5 ? 'text-rose-500 dark:text-rose-400' : ''">{{ w }}</div>
+          <div class="grid grid-cols-7 text-center text-[11px] font-medium text-muted border-b border-zinc-300 dark:border-zinc-700">
+            <div v-for="(w, i) in WEEKDAYS_SHORT" :key="w" class="py-1" :class="i >= 5 ? 'text-red-700 dark:text-red-400' : ''">{{ w }}</div>
           </div>
           <div class="grid grid-cols-7">
             <template v-for="(n, i) in mo.cells" :key="i">
-              <div v-if="n === null" class="h-10 border-b border-r border-default/50" />
+              <div v-if="n === null" class="h-9 border-b border-r border-zinc-200 dark:border-zinc-700/60" />
               <div
                 v-else
-                class="h-10 border-b border-r border-default/50 flex items-center justify-center text-sm cursor-default"
+                class="h-9 border-b border-r border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center text-sm cursor-default"
                 :class="cellClass(n)"
                 :title="cellTitle(n)"
               >

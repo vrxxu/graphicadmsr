@@ -25,10 +25,10 @@ const monthItems = [
   ...MONTHS_NOM.map((label, value) => ({ label, value }))
 ]
 const vacFilterItems = [
-  { label: 'Все сотрудники', value: 'all' },
-  { label: 'С запланированными отпусками', value: 'with' },
-  { label: 'Без запланированных отпусков', value: 'without' },
-  { label: 'В отпуске на выбранную дату', value: 'onDate' }
+  { label: 'Все', value: 'all' },
+  { label: 'С отпуском', value: 'with' },
+  { label: 'Без отпуска', value: 'without' },
+  { label: 'В отпуске на дату', value: 'onDate' }
 ]
 
 function resetFilters() {
@@ -39,30 +39,35 @@ function resetFilters() {
   selectedId.value = null
 }
 
-// ---------- дерево подразделений ----------
-interface TreeItem { label: string, value: string, defaultExpanded?: boolean, children?: TreeItem[] }
-function toItems(nodes: DeptNode[]): TreeItem[] {
-  return nodes.map(n => ({
-    label: n.name,
-    value: String(n.id),
-    defaultExpanded: n.depth < 2,
-    children: n.children.length ? toItems(n.children) : undefined
-  }))
-}
-const treeItems = computed(() => toItems(tree.value))
-function findItem(items: TreeItem[], value: string): TreeItem | undefined {
-  for (const i of items) {
-    if (i.value === value) return i
-    const f = i.children ? findItem(i.children, value) : undefined
-    if (f) return f
+// ---------- подразделения ----------
+const deptSearch = ref('')
+
+// левая колонка: простые кнопки; ветка раскрывается только вдоль выбранного пути
+const deptButtons = computed(() => {
+  const q = deptSearch.value.trim().toLowerCase()
+  if (q) {
+    return flatten(tree.value).filter(n => n.name.toLowerCase().includes(q)).map(node => ({ node, indent: 0 }))
   }
-}
-const treeModel = computed({
-  get: () => (activeId.value !== null ? findItem(treeItems.value, String(activeId.value)) : undefined),
-  set: (item: TreeItem | undefined) => {
-    if (item) selectedId.value = Number(item.value)
+  const root = tree.value[0]
+  if (!root) return []
+  const path = new Set<number>()
+  let cur: number | null = activeId.value
+  while (cur !== null) {
+    path.add(cur)
+    cur = deptById.value.get(cur)?.parentId ?? null
   }
+  const out: { node: DeptNode, indent: number }[] = []
+  const walk = (n: DeptNode, depth: number) => {
+    for (const c of n.children) {
+      out.push({ node: c, indent: depth })
+      if (path.has(c.id)) walk(c, depth + 1)
+    }
+  }
+  walk(root, 0)
+  return out
 })
+const showMore = ref(false)
+const overlapsOpen = ref(false)
 
 const activeNode = computed(() => (activeId.value !== null ? findNode(tree.value, activeId.value) : null))
 const scopeIds = computed(() => new Set(activeNode.value ? subtreeIds(activeNode.value) : []))
@@ -165,16 +170,9 @@ const summary = computed(() => {
   }
 })
 
-const kpis = computed(() => [
-  { label: 'Всего сотрудников', value: summary.value.total, icon: 'i-lucide-users', tone: '' },
-  { label: `В отпуске на ${filterDate.value ? formatDate(filterDate.value) : '—'}`, value: summary.value.onVacation, icon: 'i-lucide-plane', tone: 'gold' },
-  { label: 'Не в отпуске', value: summary.value.notOnVacation, icon: 'i-lucide-briefcase', tone: 'green' },
-  { label: `Без отпусков в ${year.value} г.`, value: summary.value.withoutYear, icon: 'i-lucide-calendar-x', tone: '' },
-  { label: 'Макс. одновременно в отпуске', value: summary.value.maxSimultaneous, icon: 'i-lucide-flame', tone: 'accent' }
-])
-
 // ---------- пересечения: отображение ----------
 const showAllOverlaps = ref(false)
+const warnCount = computed(() => allOverlaps.value.filter(o => o.warning).length)
 const overlapView = computed(() => {
   const sorted = [...allOverlaps.value].sort((a, b) =>
     Number(b.warning) - Number(a.warning) || b.count - a.count || a.start.localeCompare(b.start)
@@ -211,89 +209,100 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
 </script>
 
 <template>
-  <div class="space-y-5">
-    <div v-if="status === 'pending' && !employees.length" class="py-20 text-center text-muted">Загрузка данных…</div>
+  <div class="space-y-4">
+    <div v-if="status === 'pending' && !employees.length" class="py-24 text-center text-muted">Загрузка данных…</div>
 
     <template v-else>
-      <!-- фильтры -->
-      <UCard :ui="{ body: 'p-3 sm:p-4' }">
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6 items-end">
-          <UFormField label="Поиск по фамилии" class="xl:col-span-1">
-            <UInput v-model="search" icon="i-lucide-search" placeholder="Например, Орлова" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Год">
-            <div class="flex items-center gap-1">
-              <UButton class="fx-nudge-l" icon="i-lucide-chevron-left" color="neutral" variant="outline" aria-label="Предыдущий год" @click="year--" />
-              <UInput v-model.number="year" type="number" min="2000" max="2100" class="w-24" :ui="{ base: 'text-center' }" />
-              <UButton class="fx-nudge-r" icon="i-lucide-chevron-right" color="neutral" variant="outline" aria-label="Следующий год" @click="year++" />
-            </div>
-          </UFormField>
-
-          <UFormField label="Период">
-            <USelect v-model="month" :items="monthItems" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Показать">
-            <USelect v-model="vacFilter" :items="vacFilterItems" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Выбранная дата" description="Для «в отпуске на дату» и сводки">
-            <UInput v-model="filterDate" type="date" class="w-full" />
-          </UFormField>
-
-          <div class="flex gap-2">
-            <UButton class="fx-spin" icon="i-lucide-rotate-ccw" color="neutral" variant="outline" @click="resetFilters">Сбросить</UButton>
-          </div>
+      <!-- заголовок -->
+      <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
+        <div class="min-w-0">
+          <h1 class="text-xl font-semibold truncate">{{ activeNode?.name }}</h1>
+          <p class="text-sm text-muted truncate">{{ breadcrumb }}</p>
         </div>
-      </UCard>
+        <div class="ml-auto flex items-center gap-2">
+          <UButton icon="i-lucide-plus" to="/vacations?new=1">Добавить отпуск</UButton>
+        </div>
+      </div>
 
-      <div class="grid gap-4 lg:grid-cols-[18rem_1fr] items-start">
-        <!-- дерево -->
-        <UCard :ui="{ body: 'p-2 sm:p-3' }" class="lg:sticky lg:top-24">
-          <template #header>
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-semibold">Структура</span>
-              <UButton class="fx-pop" size="xs" color="neutral" variant="soft" icon="i-lucide-building-2" @click="selectedId = null">
-                Вся администрация
-              </UButton>
-            </div>
-          </template>
-          <div class="max-h-[60vh] overflow-auto">
-            <UTree v-model="treeModel" :items="treeItems" color="primary" size="sm" />
+      <!-- панель фильтров -->
+      <div class="flex flex-wrap items-center gap-2 rounded-xl border border-default bg-default p-2">
+        <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по фамилии" class="w-full sm:w-56" />
+
+        <div class="flex items-center rounded-lg border border-default">
+          <UButton icon="i-lucide-chevron-left" color="neutral" variant="ghost" size="sm" aria-label="Предыдущий год" @click="year--" />
+          <span class="w-12 text-center text-sm font-medium tabular-nums">{{ year }}</span>
+          <UButton icon="i-lucide-chevron-right" color="neutral" variant="ghost" size="sm" aria-label="Следующий год" @click="year++" />
+        </div>
+
+        <USelect v-model="month" :items="monthItems" class="w-36" />
+
+        <UTabs v-model="vacFilter" :items="vacFilterItems" :content="false" size="sm" color="primary" variant="pill" class="w-auto" />
+
+        <UInput v-model="filterDate" type="date" class="w-40" title="Дата для сводки и фильтра «в отпуске на дату»" />
+
+        <UButton class="ml-auto" icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" @click="resetFilters">Сбросить</UButton>
+      </div>
+
+      <!-- сводка -->
+      <div class="flex flex-wrap items-center gap-x-8 gap-y-2 px-1">
+        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.total }}</span><span class="text-sm text-muted">сотрудников</span></div>
+        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums text-amber-600 dark:text-amber-500">{{ summary.onVacation }}</span><span class="text-sm text-muted">в отпуске {{ filterDate ? formatDate(filterDate).slice(0, 5) : '' }}</span></div>
+        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums text-primary">{{ summary.notOnVacation }}</span><span class="text-sm text-muted">на работе</span></div>
+        <template v-if="showMore">
+          <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.withoutYear }}</span><span class="text-sm text-muted">без отпуска в {{ year }}</span></div>
+          <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.maxSimultaneous }}</span><span class="text-sm text-muted">пик одновременно</span></div>
+        </template>
+        <UButton size="xs" color="neutral" variant="link" @click="showMore = !showMore">{{ showMore ? 'Меньше' : 'Ещё' }}</UButton>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] items-start">
+        <!-- подразделения -->
+        <aside class="space-y-1.5 lg:sticky lg:top-4">
+          <UInput v-model="deptSearch" icon="i-lucide-search" placeholder="Найти подразделение" class="w-full">
+            <template v-if="deptSearch" #trailing>
+              <UButton color="neutral" variant="link" size="xs" icon="i-lucide-x" aria-label="Очистить" @click="deptSearch = ''" />
+            </template>
+          </UInput>
+          <div class="max-h-[70vh] space-y-0.5 overflow-auto">
+            <UButton
+              block
+              class="justify-start"
+              icon="i-lucide-building-2"
+              :color="activeId === rootId ? 'primary' : 'neutral'"
+              :variant="activeId === rootId ? 'soft' : 'ghost'"
+              @click="selectedId = null; deptSearch = ''"
+            >
+              Вся администрация
+            </UButton>
+            <UButton
+              v-for="b in deptButtons"
+              :key="b.node.id"
+              block
+              class="h-auto justify-start whitespace-normal py-1.5 text-left"
+              :style="{ marginLeft: `${b.indent * 14}px`, width: `calc(100% - ${b.indent * 14}px)` }"
+              :color="activeId === b.node.id ? 'primary' : 'neutral'"
+              :variant="activeId === b.node.id ? 'soft' : 'ghost'"
+              @click="selectedId = b.node.id"
+            >
+              {{ b.node.name }}
+            </UButton>
+            <p v-if="!deptButtons.length" class="px-2 py-6 text-center text-sm text-muted">Ничего не найдено</p>
           </div>
-        </UCard>
+        </aside>
 
         <div class="space-y-4 min-w-0">
-          <!-- сводка -->
-          <div>
-            <div class="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-              <UIcon name="i-lucide-map-pin" />
-              <span class="font-medium text-highlighted">{{ breadcrumb }}</span>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-              <div v-for="k in kpis" :key="k.label" class="kpi" :data-tone="k.tone">
-                <div class="flex items-start justify-between gap-2">
-                  <span class="text-xs font-medium text-muted leading-snug">{{ k.label }}</span>
-                  <span class="kpi-icon"><UIcon :name="k.icon" class="size-4" /></span>
-                </div>
-                <div class="kpi-value">{{ k.value }}</div>
-              </div>
-            </div>
-          </div>
-
           <!-- диаграмма -->
           <div>
             <div class="mb-2 flex flex-wrap items-center gap-2">
-              <UButton class="fx-squeeze" size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть все</UButton>
-              <UButton class="fx-stretch" size="xs" color="neutral" variant="outline" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть все</UButton>
-              <div class="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted">
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-emerald-500" /> Утверждён</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-amber-400" /> Запланирован</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-neutral-500" /> Перенесён</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-stone-300/60 dark:bg-stone-600/60" /> Выходные</span>
-                <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm bg-rose-500/25" /> Праздничные</span>
-                <span class="flex items-center gap-1"><span class="inline-block h-3 w-px bg-orange-500" /> Сегодня</span>
+              <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть</UButton>
+              <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть</UButton>
+              <div class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-600" />Утверждён</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-600" />Запланирован</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-500" />Перенесён</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-400/40" />Выходные</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-red-500/30" />Праздники</span>
+                <span class="flex items-center gap-1.5"><span class="h-3 w-0.5 bg-red-500" />Сегодня</span>
               </div>
             </div>
             <GanttChart
@@ -309,41 +318,47 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
           </div>
 
           <!-- пересечения -->
-          <UCard>
-            <template #header>
-              <div class="flex flex-wrap items-center gap-3">
-                <div>
-                  <h2 class="font-semibold">Пересечения отпусков в {{ year }} г.</h2>
-                  <p class="text-xs text-muted">Одновременное отсутствие двух и более сотрудников одного подразделения</p>
-                </div>
-                <UFormField label="Порог предупреждения, % отсутствующих" class="ml-auto" orientation="horizontal">
-                  <UInputNumber v-model="threshold" :min="10" :max="100" :step="5" class="w-32" />
-                </UFormField>
-              </div>
-            </template>
+          <section class="rounded-xl border border-default bg-default">
+            <button type="button" class="flex w-full items-center gap-2.5 px-4 py-3 text-left" @click="overlapsOpen = !overlapsOpen">
+              <UIcon :name="overlapsOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted" />
+              <span class="text-sm font-semibold">Пересечения отпусков</span>
+              <UBadge color="neutral" variant="subtle" size="sm">{{ allOverlaps.length }}</UBadge>
+              <UBadge v-if="warnCount" color="warning" variant="subtle" size="sm" icon="i-lucide-triangle-alert">{{ warnCount }} выше порога</UBadge>
+            </button>
+            <div v-if="overlapsOpen" class="flex items-center gap-2 border-t border-default px-4 py-2 text-xs text-muted">
+              <span>Предупреждать, если в отпуске от</span>
+              <UInputNumber v-model="threshold" :min="10" :max="100" :step="5" size="sm" class="w-28" />
+              <span>% подразделения</span>
+            </div>
 
-            <div v-if="!allOverlaps.length" class="py-6 text-center text-muted">Пересечений не найдено</div>
-            <ul v-else class="divide-y divide-default">
-              <li v-for="(o, i) in overlapView" :key="`${o.departmentId}-${o.start}-${i}`" class="py-3 flex flex-col gap-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <UBadge v-if="o.warning" color="warning" icon="i-lucide-triangle-alert">Превышен порог</UBadge>
-                  <UBadge v-else color="neutral" variant="subtle">Пересечение</UBadge>
-                  <span class="font-medium">{{ formatRange(o.start, o.end) }}</span>
-                  <span class="text-sm text-muted">· {{ deptById.get(o.departmentId)?.name }}</span>
+            <div v-if="overlapsOpen && !allOverlaps.length" class="border-t border-default py-10 text-center text-sm text-muted">Пересечений нет</div>
+            <ul v-else-if="overlapsOpen" class="divide-y divide-default border-t border-default">
+              <li
+                v-for="(o, i) in overlapView"
+                :key="`${o.departmentId}-${o.start}-${i}`"
+                class="relative flex flex-wrap items-center gap-x-5 gap-y-1 py-3 pl-5 pr-4"
+              >
+                <span class="absolute inset-y-2 left-2 w-0.5 rounded-full" :class="o.warning ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-700'" />
+                <div class="w-44 shrink-0">
+                  <div class="text-sm font-medium tabular-nums">{{ formatRange(o.start, o.end) }}</div>
+                  <div class="text-xs text-muted truncate" :title="deptById.get(o.departmentId)?.name">{{ deptById.get(o.departmentId)?.name }}</div>
                 </div>
-                <div class="text-sm">
-                  Одновременно в отпуске: <b>{{ o.count }}</b> из {{ o.total }},
-                  работает: <b>{{ o.free }}</b>
+                <div class="flex items-center gap-2 shrink-0">
+                  <div v-if="o.total <= 24" class="flex gap-0.5" :title="`${o.count} из ${o.total} в отпуске`">
+                    <span v-for="k in o.total" :key="k" class="size-2 rounded-full" :class="k <= o.count ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-700'" />
+                  </div>
+                  <span class="text-sm tabular-nums"><b>{{ o.count }}</b> из {{ o.total }}</span>
+                  <UBadge v-if="o.warning" color="warning" variant="subtle" size="sm">Выше порога</UBadge>
                 </div>
-                <div class="text-sm text-muted">{{ o.employeeIds.map(shortName).join(', ') }}</div>
+                <div class="min-w-0 flex-1 basis-64 text-sm text-muted">{{ o.employeeIds.map(shortName).join(', ') }}</div>
               </li>
             </ul>
-            <div v-if="allOverlaps.length > 12" class="pt-3">
-              <UButton variant="link" color="neutral" @click="showAllOverlaps = !showAllOverlaps">
+            <div v-if="overlapsOpen && allOverlaps.length > 12" class="border-t border-default px-4 py-2">
+              <UButton size="sm" variant="link" color="neutral" @click="showAllOverlaps = !showAllOverlaps">
                 {{ showAllOverlaps ? 'Показать меньше' : `Показать все (${allOverlaps.length})` }}
               </UButton>
             </div>
-          </UCard>
+          </section>
         </div>
       </div>
     </template>
@@ -356,14 +371,14 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
           <div class="text-muted">{{ pathOf(departments, details.employee.departmentId) }}</div>
           <dl class="grid grid-cols-[8rem_1fr] gap-y-2">
             <dt class="text-muted">Период</dt>
-            <dd>{{ formatRange(details.vacation.startDate, details.vacation.endDate) }}</dd>
+            <dd class="tabular-nums">{{ formatRange(details.vacation.startDate, details.vacation.endDate) }}</dd>
             <dt class="text-muted">Длительность</dt>
             <dd>{{ detailsDays }} {{ plural(detailsDays, ['день', 'дня', 'дней']) }}</dd>
             <dt class="text-muted">Статус</dt>
             <dd><UBadge :color="STATUS_COLORS[details.vacation.status].badge" variant="subtle">{{ STATUS_LABELS[details.vacation.status] }}</UBadge></dd>
             <dt class="text-muted">Примечание</dt>
             <dd>{{ details.vacation.note || '—' }}</dd>
-            <dt class="text-muted">В отпуске в этот период</dt>
+            <dt class="text-muted">Одновременно в отпуске</dt>
             <dd>
               <span v-if="!coworkersOnVacation.length">Коллег из отдела нет</span>
               <span v-else>{{ coworkersOnVacation.map(c => shortName(c.id)).join(', ') }}</span>
@@ -374,7 +389,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
       <template #footer>
         <div v-if="details" class="flex gap-2 w-full justify-end">
           <UButton color="neutral" variant="outline" :to="`/employees/${details.employee.id}`">Карточка сотрудника</UButton>
-          <UButton class="fx-wiggle" :to="`/vacations?edit=${details.vacation.id}`" icon="i-lucide-pencil">Редактировать</UButton>
+          <UButton :to="`/vacations?edit=${details.vacation.id}`" icon="i-lucide-pencil">Редактировать</UButton>
         </div>
       </template>
     </UModal>

@@ -34,7 +34,7 @@ async function removeVac(v: Vacation) {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-4">
-    <UButton to="/employees" icon="i-lucide-arrow-left" color="neutral" variant="link" class="px-0 fx-nudge-l">К списку сотрудников</UButton>
+    <UButton to="/employees" icon="i-lucide-arrow-left" color="neutral" variant="link" class="px-0">К списку сотрудников</UButton>
 
     <UCard v-if="!employee">
       <p class="text-muted">Сотрудник не найден.</p>
@@ -50,8 +50,8 @@ async function removeVac(v: Vacation) {
             <p class="text-sm mt-1">{{ pathOf(departments, employee.departmentId) }}</p>
           </div>
           <div class="ml-auto flex gap-2">
-            <UButton class="fx-pop" icon="i-lucide-calendar-days" color="neutral" variant="outline" :to="`/calendar?employee=${employee.id}`">Календарь</UButton>
-            <UButton class="fx-wiggle" icon="i-lucide-pencil" color="neutral" variant="outline" @click="formOpen = true">Изменить</UButton>
+            <UButton icon="i-lucide-calendar-days" color="neutral" variant="outline" :to="`/calendar?employee=${employee.id}`">Календарь</UButton>
+            <UButton icon="i-lucide-pencil" color="neutral" variant="outline" @click="formOpen = true">Изменить</UButton>
           </div>
         </div>
       </UCard>
@@ -63,7 +63,7 @@ async function removeVac(v: Vacation) {
               <h2 class="font-semibold">Запланированные отпуска</h2>
               <p class="text-xs text-muted">Всего периодов: {{ list.length }} · дней: {{ totalDays }}</p>
             </div>
-            <UButton class="ml-auto fx-rot90" icon="i-lucide-plus" @click="openVac(null)">Добавить период</UButton>
+            <UButton class="ml-auto" icon="i-lucide-plus" @click="openVac(null)">Добавить период</UButton>
           </div>
         </template>
 
@@ -78,8 +78,8 @@ async function removeVac(v: Vacation) {
               </div>
             </div>
             <UBadge :color="STATUS_COLORS[v.status].badge" variant="subtle" class="ml-auto">{{ STATUS_LABELS[v.status] }}</UBadge>
-            <UButton class="fx-wiggle" icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openVac(v)" />
-            <UButton class="fx-shake" icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="removeVac(v)" />
+            <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openVac(v)" />
+            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="removeVac(v)" />
           </li>
         </ul>
       </UCard>
