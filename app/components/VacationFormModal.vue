@@ -67,10 +67,10 @@ async function submit() {
         </UFormField>
         <div class="grid grid-cols-2 gap-3">
           <UFormField label="Дата начала" required>
-            <UInput v-model="form.startDate" type="date" class="w-full" />
+            <AppDatePicker v-model="form.startDate" placeholder="Начало" />
           </UFormField>
           <UFormField label="Дата окончания" required>
-            <UInput v-model="form.endDate" type="date" class="w-full" />
+            <AppDatePicker v-model="form.endDate" placeholder="Окончание" />
           </UFormField>
         </div>
         <UFormField label="Статус">

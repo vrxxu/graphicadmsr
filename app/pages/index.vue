@@ -4,7 +4,7 @@ import { STATUS_LABELS } from '#shared/types'
 import type { GanttRow } from '~/components/GanttChart.vue'
 
 const router = useRouter()
-const { departments, employees, vacations, tree, deptById, vacationsByEmployee, status } = useSchedule()
+const { departments, employees, vacations, tree, deptById, vacationsByEmployee, conflictOverlaps, conflictRanges, employeeById, status } = useSchedule()
 const threshold = useThreshold()
 
 // ---------- состояние фильтров ----------
@@ -66,7 +66,6 @@ const deptButtons = computed(() => {
   walk(root, 0)
   return out
 })
-const showMore = ref(false)
 const overlapsOpen = ref(false)
 
 const activeNode = computed(() => (activeId.value !== null ? findNode(tree.value, activeId.value) : null))
@@ -172,6 +171,20 @@ const summary = computed(() => {
 
 // ---------- пересечения: отображение ----------
 const showAllOverlaps = ref(false)
+const scopeConflicts = computed(() =>
+  conflictOverlaps.value
+    .filter(c =>
+      c.s <= yearTo.value && c.e >= yearFrom.value
+      && (scopeIds.value.has(employeeById.value.get(c.employeeId)?.departmentId ?? -1)
+        || scopeIds.value.has(employeeById.value.get(c.otherId)?.departmentId ?? -1))
+    )
+    .map(c => ({
+      ...c,
+      start: isoFromDayNum(Math.max(c.s, yearFrom.value)),
+      end: isoFromDayNum(Math.min(c.e, yearTo.value)),
+      days: Math.min(c.e, yearTo.value) - Math.max(c.s, yearFrom.value) + 1
+    }))
+)
 const warnCount = computed(() => allOverlaps.value.filter(o => o.warning).length)
 const overlapView = computed(() => {
   const sorted = [...allOverlaps.value].sort((a, b) =>
@@ -194,6 +207,16 @@ function openDetails(payload: { vacation: Vacation, employee: Employee }) {
   details.value = payload
   detailsOpen.value = true
 }
+const detailsConflicts = computed(() => {
+  const d = details.value
+  if (!d) return []
+  return conflictOverlaps.value
+    .filter(c => c.vacationId === d.vacation.id || c.otherVacationId === d.vacation.id)
+    .map((c) => {
+      const otherId = c.vacationId === d.vacation.id ? c.otherId : c.employeeId
+      return { name: shortName(otherId), start: isoFromDayNum(c.s), end: isoFromDayNum(c.e) }
+    })
+})
 const detailsDays = computed(() => (details.value ? daysInclusive(details.value.vacation.startDate, details.value.vacation.endDate) : 0))
 const coworkersOnVacation = computed(() => {
   const d = details.value
@@ -216,7 +239,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
       <!-- заголовок -->
       <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
         <div class="min-w-0">
-          <h1 class="text-xl font-semibold truncate">{{ activeNode?.name }}</h1>
+          <h1 class="text-lg font-semibold truncate">{{ activeNode?.name }}</h1>
           <p class="text-sm text-muted truncate">{{ breadcrumb }}</p>
         </div>
         <div class="ml-auto flex items-center gap-2">
@@ -225,7 +248,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
       </div>
 
       <!-- панель фильтров -->
-      <div class="flex flex-wrap items-center gap-2 rounded-xl border border-default bg-default p-2">
+      <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-default bg-default p-2">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по фамилии" class="w-full sm:w-56" />
 
         <div class="flex items-center rounded-lg border border-default">
@@ -238,21 +261,33 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
 
         <UTabs v-model="vacFilter" :items="vacFilterItems" :content="false" size="sm" color="primary" variant="pill" class="w-auto" />
 
-        <UInput v-model="filterDate" type="date" class="w-40" title="Дата для сводки и фильтра «в отпуске на дату»" />
+        <AppDatePicker v-model="filterDate" class="w-40" placeholder="Дата" title="Дата для сводки и фильтра «в отпуске на дату»" />
 
         <UButton class="ml-auto" icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" @click="resetFilters">Сбросить</UButton>
       </div>
 
       <!-- сводка -->
-      <div class="flex flex-wrap items-center gap-x-8 gap-y-2 px-1">
-        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.total }}</span><span class="text-sm text-muted">сотрудников</span></div>
-        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums text-amber-600 dark:text-amber-500">{{ summary.onVacation }}</span><span class="text-sm text-muted">в отпуске {{ filterDate ? formatDate(filterDate).slice(0, 5) : '' }}</span></div>
-        <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums text-primary">{{ summary.notOnVacation }}</span><span class="text-sm text-muted">на работе</span></div>
-        <template v-if="showMore">
-          <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.withoutYear }}</span><span class="text-sm text-muted">без отпуска в {{ year }}</span></div>
-          <div class="flex items-baseline gap-2"><span class="text-2xl font-semibold tabular-nums">{{ summary.maxSimultaneous }}</span><span class="text-sm text-muted">пик одновременно</span></div>
-        </template>
-        <UButton size="xs" color="neutral" variant="link" @click="showMore = !showMore">{{ showMore ? 'Меньше' : 'Ещё' }}</UButton>
+      <div class="grid grid-cols-2 gap-2.5 md:grid-cols-5">
+        <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+          <div class="text-xs text-muted">Всего сотрудников</div>
+          <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ summary.total }}</div>
+        </div>
+        <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+          <div class="flex items-center gap-1.5 text-xs text-muted"><span class="size-1.5 rounded-full bg-amber-500" />В отпуске {{ filterDate ? formatDate(filterDate).slice(0, 5) : '' }}</div>
+          <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ summary.onVacation }}</div>
+        </div>
+        <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+          <div class="flex items-center gap-1.5 text-xs text-muted"><span class="size-1.5 rounded-full bg-emerald-500" />На работе</div>
+          <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ summary.notOnVacation }}</div>
+        </div>
+        <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+          <div class="text-xs text-muted">Без отпуска в {{ year }}</div>
+          <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ summary.withoutYear }}</div>
+        </div>
+        <div class="col-span-2 rounded-xl border border-default bg-default px-3.5 py-2.5 md:col-span-1">
+          <div class="text-xs text-muted">Пик одновременно</div>
+          <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ summary.maxSimultaneous }}</div>
+        </div>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] items-start">
@@ -294,15 +329,24 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
           <!-- диаграмма -->
           <div>
             <div class="mb-2 flex flex-wrap items-center gap-2">
-              <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-chevrons-down-up" @click="setAllCollapsed(true)">Свернуть</UButton>
-              <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-chevrons-up-down" @click="setAllCollapsed(false)">Развернуть</UButton>
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :icon="collapsed.size ? 'i-lucide-chevrons-up-down' : 'i-lucide-chevrons-down-up'"
+                @click="setAllCollapsed(!collapsed.size)"
+              >
+                {{ collapsed.size ? 'Развернуть все' : 'Свернуть все' }}
+              </UButton>
+              
               <div class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-600" />Утверждён</span>
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-600" />Запланирован</span>
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-500" />Перенесён</span>
+                <span class="flex items-center gap-1.5"><span class="h-3 w-5 rounded-[4px]" :class="STATUS_COLORS.approved.pill" />Утверждён</span>
+                <span class="flex items-center gap-1.5"><span class="h-3 w-5 rounded-[4px]" :class="STATUS_COLORS.planned.pill" />Запланирован</span>
+                <span class="flex items-center gap-1.5"><span class="h-3 w-5 rounded-[4px]" :class="STATUS_COLORS.moved.pill" />Перенесён</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm" style="background: repeating-linear-gradient(-45deg, #dc2626 0 3px, #b91c1c 3px 6px)" />Нельзя одновременно</span>
                 <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-400/40" />Выходные</span>
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-red-500/30" />Праздники</span>
-                <span class="flex items-center gap-1.5"><span class="h-3 w-0.5 bg-red-500" />Сегодня</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-rose-500/40" />Праздники</span>
+                <span class="flex items-center gap-1.5"><span class="h-3 w-0.5 bg-emerald-500" />Сегодня</span>
               </div>
             </div>
             <GanttChart
@@ -311,6 +355,7 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
               :month="month"
               :today="today"
               :filter-day="vacFilter === 'onDate' ? filterDay : null"
+              :conflict-ranges="conflictRanges"
               @toggle="toggleGroup"
               @select="openDetails"
               @open-employee="(id: number) => router.push(`/employees/${id}`)"
@@ -318,17 +363,30 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
           </div>
 
           <!-- пересечения -->
-          <section class="rounded-xl border border-default bg-default">
+          <section class="rounded-2xl border border-default bg-default">
             <button type="button" class="flex w-full items-center gap-2.5 px-4 py-3 text-left" @click="overlapsOpen = !overlapsOpen">
               <UIcon :name="overlapsOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted" />
               <span class="text-sm font-semibold">Пересечения отпусков</span>
               <UBadge color="neutral" variant="subtle" size="sm">{{ allOverlaps.length }}</UBadge>
               <UBadge v-if="warnCount" color="warning" variant="subtle" size="sm" icon="i-lucide-triangle-alert">{{ warnCount }} выше порога</UBadge>
+              <UBadge v-if="scopeConflicts.length" color="error" variant="subtle" size="sm" icon="i-lucide-ban">{{ scopeConflicts.length }} {{ plural(scopeConflicts.length, ['нарушение', 'нарушения', 'нарушений']) }}</UBadge>
             </button>
             <div v-if="overlapsOpen" class="flex items-center gap-2 border-t border-default px-4 py-2 text-xs text-muted">
               <span>Предупреждать, если в отпуске от</span>
               <UInputNumber v-model="threshold" :min="10" :max="100" :step="5" size="sm" class="w-28" />
               <span>% подразделения</span>
+            </div>
+
+            <div v-if="overlapsOpen && scopeConflicts.length" class="border-t border-default">
+              <div class="px-4 pt-3 text-sm font-medium text-red-600 dark:text-red-400">Нарушены ограничения «нельзя одновременно»</div>
+              <ul class="divide-y divide-default">
+                <li v-for="(c, i) in scopeConflicts" :key="i" class="relative flex flex-wrap items-center gap-x-5 gap-y-1 py-2.5 pl-5 pr-4">
+                  <span class="absolute inset-y-2 left-2 w-0.5 rounded-full bg-red-600" />
+                  <span class="w-44 shrink-0 text-sm font-medium tabular-nums">{{ formatRange(c.start, c.end) }}</span>
+                  <span class="text-sm">{{ shortName(c.employeeId) }} и {{ shortName(c.otherId) }}</span>
+                  <span class="text-xs text-muted">{{ c.days }} {{ plural(c.days, ['день', 'дня', 'дней']) }}</span>
+                </li>
+              </ul>
             </div>
 
             <div v-if="overlapsOpen && !allOverlaps.length" class="border-t border-default py-10 text-center text-sm text-muted">Пересечений нет</div>
@@ -378,6 +436,12 @@ const breadcrumb = computed(() => (activeId.value !== null ? pathOf(departments.
             <dd><UBadge :color="STATUS_COLORS[details.vacation.status].badge" variant="subtle">{{ STATUS_LABELS[details.vacation.status] }}</UBadge></dd>
             <dt class="text-muted">Примечание</dt>
             <dd>{{ details.vacation.note || '—' }}</dd>
+            <dt v-if="detailsConflicts.length" class="text-red-600 dark:text-red-400">Нарушение ограничения</dt>
+            <dd v-if="detailsConflicts.length" class="space-y-0.5">
+              <div v-for="(c, i) in detailsConflicts" :key="i" class="text-red-600 dark:text-red-400">
+                Нельзя вместе с {{ c.name }}: {{ formatRange(c.start, c.end) }}
+              </div>
+            </dd>
             <dt class="text-muted">Одновременно в отпуске</dt>
             <dd>
               <span v-if="!coworkersOnVacation.length">Коллег из отдела нет</span>

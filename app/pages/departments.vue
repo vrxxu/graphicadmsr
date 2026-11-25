@@ -10,6 +10,7 @@ const countOwn = computed(() => {
   return m
 })
 const flat = computed(() => flatten(tree.value))
+const maxDepth = computed(() => flat.value.reduce((m, n) => Math.max(m, n.depth + 1), 0))
 const totalIn = (n: DeptNode) => subtreeIds(n).reduce((s, id) => s + (countOwn.value.get(id) ?? 0), 0)
 
 // ---------- форма ----------
@@ -80,37 +81,59 @@ async function reset() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-4">
-    <div class="flex flex-wrap items-center gap-3">
-      <h1 class="text-xl font-semibold mr-auto">Организационная структура</h1>
-      <UButton color="neutral" variant="outline" icon="i-lucide-database-backup" @click="resetOpen = true">Сбросить демо-данные</UButton>
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
+  <div class="space-y-4">
+    <!-- заголовок -->
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold truncate">Организационная структура</h1>
+        <p class="text-sm text-muted truncate">Подразделения и количество сотрудников в них</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <UButton color="neutral" variant="outline" icon="i-lucide-database-backup" @click="resetOpen = true">Сбросить демо-данные</UButton>
+        <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить подразделение</UButton>
+      </div>
     </div>
 
-    <UCard :ui="{ body: 'p-2 sm:p-2' }">
+    <!-- сводка -->
+    <div class="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="text-xs text-muted">Подразделений</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ flat.length }}</div>
+      </div>
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="text-xs text-muted">Сотрудников</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ employees.length }}</div>
+      </div>
+      <div class="col-span-2 rounded-xl border border-default bg-default px-3.5 py-2.5 md:col-span-1">
+        <div class="text-xs text-muted">Уровней вложенности</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ maxDepth }}</div>
+      </div>
+    </div>
+
+    <section class="overflow-hidden rounded-2xl border border-default bg-default">
       <ul class="divide-y divide-default">
         <li
           v-for="n in flat"
           :key="n.id"
-          class="flex items-center gap-2 py-2 pr-2"
-          :style="{ paddingLeft: `${8 + n.depth * 22}px` }"
+          class="group flex items-center gap-3 py-2.5 pr-3 transition-colors hover:bg-elevated/60"
+          :style="{ paddingLeft: `${16 + n.depth * 24}px` }"
         >
-          <UIcon :name="n.children.length ? 'i-lucide-folder-tree' : 'i-lucide-folder'" class="text-primary shrink-0" />
+          <UIcon :name="n.children.length ? 'i-lucide-folder-tree' : 'i-lucide-folder'" class="size-4 shrink-0 text-primary" />
           <div class="min-w-0">
-            <div class="truncate font-medium">{{ n.name }}</div>
+            <div class="truncate text-[13px] font-medium">{{ n.name }}</div>
             <div class="text-xs text-muted">
               Сотрудников: {{ countOwn.get(n.id) ?? 0 }}
               <template v-if="n.children.length"> · с вложенными: {{ totalIn(n) }}</template>
             </div>
           </div>
-          <div class="ml-auto flex shrink-0">
+          <div class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
             <UButton icon="i-lucide-folder-plus" color="neutral" variant="ghost" size="sm" aria-label="Добавить вложенное" @click="openForm(null, n.id)" />
             <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(departments.find(d => d.id === n.id)!)" />
             <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(departments.find(d => d.id === n.id)!)" />
           </div>
         </li>
       </ul>
-    </UCard>
+    </section>
 
     <UModal v-model:open="formOpen" :title="editing ? 'Редактирование подразделения' : 'Новое подразделение'">
       <template #body>

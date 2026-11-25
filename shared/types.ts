@@ -12,6 +12,12 @@ export interface Employee {
   departmentId: number
 }
 
+/** Пара сотрудников, которые не могут отсутствовать одновременно (employeeId < otherId). */
+export interface Conflict {
+  employeeId: number
+  otherId: number
+}
+
 export type VacationStatus = 'planned' | 'approved' | 'moved'
 
 export interface Vacation {

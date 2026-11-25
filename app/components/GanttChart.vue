@@ -13,6 +13,8 @@ const props = defineProps<{
   month: number
   today: string
   filterDay: number | null
+  /** отпуск (id) → диапазоны дней, нарушающие ограничение «не может отсутствовать одновременно» */
+  conflictRanges?: Map<number, { s: number, e: number }[]>
 }>()
 
 const emit = defineEmits<{
@@ -21,8 +23,9 @@ const emit = defineEmits<{
   (e: 'open-employee', id: number): void
 }>()
 
-const LEFT = 272 // ширина левой колонки, px
-const ROW_H = 40
+const LEFT = 224 // ширина левой колонки, px
+const ROW_H = 44
+const GROUP_H = 32
 
 const rangeStart = computed(() =>
   props.month < 0 ? dayNum(`${props.year}-01-01`) : monthStartDayNum(props.year, props.month)
@@ -31,7 +34,7 @@ const totalDays = computed(() =>
   props.month < 0 ? dayNum(`${props.year}-12-31`) - rangeStart.value + 1 : daysInMonth(props.year, props.month)
 )
 const rangeEnd = computed(() => rangeStart.value + totalDays.value - 1)
-const dw = computed(() => (props.month < 0 ? 5 : 36)) // ширина одного дня, px
+const dw = computed(() => (props.month < 0 ? 7 : 34)) // ширина одного дня, px
 const timelineWidth = computed(() => totalDays.value * dw.value)
 
 const months = computed(() => {
@@ -42,7 +45,7 @@ const months = computed(() => {
     const n = daysInMonth(props.year, m)
     list.push({
       m,
-      label: props.month < 0 ? MONTHS_SHORT[m]!.toUpperCase() : `${MONTHS_NOM[m]} ${props.year}`,
+      label: props.month < 0 ? MONTHS_SHORT[m]!.charAt(0).toUpperCase() + MONTHS_SHORT[m]!.slice(1) : `${MONTHS_NOM[m]} ${props.year}`,
       left: (s - rangeStart.value) * dw.value,
       width: n * dw.value
     })
@@ -60,6 +63,7 @@ const days = computed(() => {
       num: i + 1,
       wd: WEEKDAYS_SHORT[weekdayMon0(n)]!,
       off: isNonWorking(n),
+      holiday: isExtraDayOff(n),
       title: info?.label ?? ''
     }
   })
@@ -91,8 +95,11 @@ const rowBg = computed(() => {
   const satIdx = (5 - weekdayMon0(rangeStart.value) + 7) % 7
   const monIdx = (7 - weekdayMon0(rangeStart.value)) % 7
   const yearMode = props.month < 0
-  const lineSize = yearMode ? w * 7 : w
-  const linePos = yearMode ? monIdx * w : 0
+  // в режиме года сетку рисуют только границы месяцев (подложка), иначе рябит
+  if (yearMode) return { width: `${timelineWidth.value}px` }
+  const lineSize = w
+  const linePos = 0
+  void monIdx
   return {
     width: `${timelineWidth.value}px`,
     backgroundImage: [
@@ -117,37 +124,58 @@ function bar(v: Vacation) {
   }
 }
 
+/** Красные фрагменты полосы: координаты внутри самой полосы. */
+function conflictSegs(v: Vacation) {
+  const ranges = props.conflictRanges?.get(v.id)
+  if (!ranges?.length || !bar(v)) return []
+  const barStart = Math.max(dayNum(v.startDate), rangeStart.value)
+  const out: { left: number, width: number }[] = []
+  for (const r of ranges) {
+    const s = Math.max(r.s, barStart)
+    const e = Math.min(r.e, rangeEnd.value)
+    if (s <= e) out.push({ left: (s - barStart) * dw.value, width: (e - s + 1) * dw.value })
+  }
+  return out
+}
+
 function barLabel(v: Vacation, width: number) {
   const n = daysInclusive(v.startDate, v.endDate)
-  if (width >= 150) return `${formatDate(v.startDate).slice(0, 5)} – ${formatDate(v.endDate).slice(0, 5)} · ${n} дн.`
-  if (width >= 96) return `${formatDate(v.startDate).slice(0, 5)} – ${formatDate(v.endDate).slice(0, 5)}`
-  if (width >= 36) return `${n} дн.`
+  const range = `${formatDate(v.startDate).slice(0, 5)} – ${formatDate(v.endDate).slice(0, 5)}`
+  if (width >= 140) return `${range} · ${n} дн.`
+  if (width >= 40) return `${n} дн.`
   return ''
+}
+
+/** «Иванов Иван Петрович» → «Иванов И. П.» */
+function shortName(full: string) {
+  const [last, first, patr] = full.split(' ')
+  return `${last}${first ? ` ${first[0]}.` : ''}${patr ? ` ${patr[0]}.` : ''}`
 }
 
 function barTitle(v: Vacation) {
   const n = daysInclusive(v.startDate, v.endDate)
-  return `${formatRange(v.startDate, v.endDate)} · ${n} ${plural(n, ['день', 'дня', 'дней'])} · ${STATUS_LABELS[v.status]}`
+  const warn = props.conflictRanges?.has(v.id) ? ' · ⚠ пересекается с сотрудником, с которым нельзя уходить одновременно' : ''
+  return `${formatRange(v.startDate, v.endDate)} · ${n} ${plural(n, ['день', 'дня', 'дней'])} · ${STATUS_LABELS[v.status]}${warn}`
 }
 </script>
 
 <template>
-  <div class="gantt overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-default max-h-[68vh]">
+  <div class="gantt overflow-auto rounded-2xl border border-default bg-default shadow-sm max-h-[72vh]">
     <div :style="{ width: `${LEFT + timelineWidth}px` }" class="relative">
       <!-- шапка -->
-      <div class="sticky top-0 z-30 flex bg-default border-b border-zinc-300 dark:border-zinc-700">
+      <div class="sticky top-0 z-30 flex border-b border-default bg-zinc-100 dark:bg-zinc-900">
         <div
-          class="sticky left-0 z-40 shrink-0 bg-default border-r border-zinc-300 dark:border-zinc-700 px-4 flex items-end pb-2 text-xs font-medium text-muted gantt-left-shadow"
+          class="sticky left-0 z-40 flex shrink-0 items-center border-r border-default bg-zinc-100 px-4 text-xs font-semibold dark:bg-zinc-900"
           :style="{ width: `${LEFT}px` }"
         >
-          Подразделение / сотрудник
+          Сотрудник
         </div>
-        <div class="relative" :style="{ width: `${timelineWidth}px`, height: month >= 0 ? '58px' : '34px' }">
+        <div class="relative" :style="{ width: `${timelineWidth}px`, height: month >= 0 ? '56px' : '40px' }">
           <div
             v-for="m in months"
             :key="m.m"
-            class="absolute top-0 h-8 border-l border-zinc-300 dark:border-zinc-700 px-2 text-xs font-semibold leading-8 truncate"
-            :class="m.m % 2 ? 'bg-zinc-100/80 dark:bg-zinc-800/50' : ''"
+            class="absolute top-0 truncate border-l border-default text-xs font-semibold"
+            :class="month < 0 ? 'flex h-full items-center justify-center' : 'h-8 px-3 leading-8'"
             :style="{ left: `${m.left}px`, width: `${m.width}px` }"
           >
             {{ m.label }}
@@ -156,15 +184,16 @@ function barTitle(v: Vacation) {
             <div
               v-for="d in days"
               :key="d.n"
-              class="absolute top-8 h-[26px] text-center text-[10px] leading-[12px] pt-0.5 border-l border-t border-zinc-200 dark:border-zinc-700"
-              :class="d.off ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-muted'"
+              class="absolute top-8 flex h-[24px] flex-col items-center justify-center text-[10px] leading-[12px]"
+              :class="d.off ? 'text-muted/70' : 'text-muted'"
               :style="{ left: `${(d.n - rangeStart) * dw}px`, width: `${dw}px` }"
               :title="d.title"
             >
               <span
-                class="inline-block min-w-4 rounded-full px-0.5"
-                :class="d.n === todayNum ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold' : ''"
-              >{{ d.num }}</span><br>{{ d.wd }}
+                class="grid min-w-[18px] place-items-center rounded-full px-0.5 text-[11px] font-medium"
+                :class="d.n === todayNum ? 'bg-emerald-600 text-white' : d.holiday ? 'bg-rose-500/20 text-rose-600 dark:bg-rose-400/25 dark:text-rose-300' : d.off ? '' : 'text-default'"
+              >{{ d.num }}</span>
+              <span>{{ d.wd }}</span>
             </div>
           </template>
         </div>
@@ -172,39 +201,36 @@ function barTitle(v: Vacation) {
 
       <!-- тело -->
       <div class="relative">
-        <!-- подложка: чередование месяцев, праздничные выходные, «сегодня» -->
-        <div class="absolute top-0 bottom-0 pointer-events-none z-10" :style="{ left: `${LEFT}px`, width: `${timelineWidth}px` }">
+        <!-- подложка: границы месяцев, праздники, выбранная дата, сегодня -->
+        <div class="pointer-events-none absolute bottom-0 top-0 z-10" :style="{ left: `${LEFT}px`, width: `${timelineWidth}px` }">
           <div
             v-for="m in months"
             :key="m.m"
-            class="absolute top-0 bottom-0 border-l border-zinc-300 dark:border-zinc-700"
-            :class="m.m % 2 ? 'bg-zinc-500/[0.05]' : ''"
-            :style="{ left: `${m.left}px`, width: `${m.width}px` }"
+            class="absolute bottom-0 top-0 border-l border-default"
+            :style="{ left: `${m.left}px` }"
           />
           <div
             v-for="n in extraOffDays"
             :key="n"
-            class="absolute top-0 bottom-0 bg-red-500/12"
+            class="absolute bottom-0 top-0 bg-rose-500/20 dark:bg-rose-400/25"
             :style="{ left: `${(n - rangeStart) * dw}px`, width: `${dw}px` }"
           />
           <div
             v-if="filterLeft !== null"
-            class="absolute top-0 bottom-0 bg-zinc-900/10 dark:bg-white/10 border-x border-zinc-500"
+            class="absolute bottom-0 top-0 bg-emerald-500/10"
             :style="{ left: `${filterLeft}px`, width: `${dw}px` }"
           />
-          <div v-if="todayLeft !== null" class="absolute top-0 bottom-0 w-0.5 bg-red-500" :style="{ left: `${todayLeft}px` }" />
+          <div v-if="todayLeft !== null" class="absolute bottom-0 top-0 w-px bg-emerald-500" :style="{ left: `${todayLeft}px` }">
+            <span class="absolute -left-[3px] -top-px size-[7px] rounded-full bg-emerald-500" />
+          </div>
         </div>
 
         <template v-for="row in rows" :key="row.type === 'group' ? `g${row.id}` : `e${row.employee.id}`">
-          <!-- заголовок подразделения -->
-          <div
-            v-if="row.type === 'group'"
-            class="flex bg-zinc-100 dark:bg-zinc-800/70 border-b border-zinc-300 dark:border-zinc-700"
-            :style="{ height: `${ROW_H - 4}px` }"
-          >
+          <!-- подразделение -->
+          <div v-if="row.type === 'group'" class="flex" :style="{ height: `${GROUP_H}px` }">
             <div
-              class="sticky left-0 z-20 shrink-0 bg-zinc-100 dark:bg-zinc-800 border-r border-zinc-300 dark:border-zinc-700 flex items-center gap-1 pr-3 gantt-left-shadow"
-              :style="{ width: `${LEFT}px`, paddingLeft: `${8 + row.depth * 14}px` }"
+              class="sticky left-0 z-20 flex shrink-0 items-center gap-1 border-b border-r border-default bg-zinc-50 pr-4 dark:bg-zinc-900"
+              :style="{ width: `${LEFT}px`, paddingLeft: `${10 + row.depth * 14}px` }"
             >
               <UButton
                 :icon="row.collapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
@@ -215,40 +241,50 @@ function barTitle(v: Vacation) {
                 :aria-label="row.collapsed ? 'Развернуть' : 'Свернуть'"
                 @click="emit('toggle', row.id)"
               />
-              <span class="text-sm font-semibold truncate" :title="row.name">{{ row.name }}</span>
-              <UBadge v-if="row.warning" color="warning" variant="solid" size="sm" icon="i-lucide-triangle-alert" class="shrink-0 rounded-full" title="Превышен порог одновременного отсутствия" />
-              <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto shrink-0 rounded-full">{{ row.count }}</UBadge>
+              <span class="truncate text-[13px] font-semibold" :title="row.name">{{ row.name }}</span>
+              <UIcon v-if="row.warning" name="i-lucide-triangle-alert" class="size-4 shrink-0 text-amber-500" title="Превышен порог одновременного отсутствия" />
+              <span class="ml-auto shrink-0 text-xs tabular-nums text-muted">{{ row.count }}</span>
             </div>
-            <div class="flex-1" />
+            <div class="flex-1 border-b border-default bg-zinc-50 dark:bg-zinc-900" />
           </div>
 
           <!-- сотрудник -->
-          <div v-else class="flex border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-500/5" :style="{ height: `${ROW_H}px` }">
+          <div v-else class="group/row flex" :style="{ height: `${ROW_H}px` }">
             <div
-              class="sticky left-0 z-20 shrink-0 bg-default border-r border-zinc-300 dark:border-zinc-700 flex flex-col justify-center pr-3 leading-tight gantt-left-shadow"
-              :style="{ width: `${LEFT}px`, paddingLeft: `${32 + row.depth * 14}px` }"
+              class="sticky left-0 z-20 flex shrink-0 items-center gap-2.5 border-b border-r border-default bg-default pr-3 transition-colors group-hover/row:bg-zinc-50 dark:group-hover/row:bg-zinc-900"
+              :style="{ width: `${LEFT}px`, paddingLeft: `${16 + row.depth * 10}px` }"
             >
-              <button class="text-left text-sm font-medium truncate hover:underline" :title="row.employee.fullName" @click="emit('open-employee', row.employee.id)">
-                {{ row.employee.fullName }}
+              <PersonAvatar :name="row.employee.fullName" />
+              <button
+                class="min-w-0 truncate text-left text-[13px] font-medium hover:text-primary"
+                :title="`${row.employee.fullName} — ${row.employee.position}`"
+                @click="emit('open-employee', row.employee.id)"
+              >
+                {{ shortName(row.employee.fullName) }}
               </button>
-              <span class="text-[11px] text-muted truncate">{{ row.employee.position }}</span>
             </div>
-            <div class="relative" :style="rowBg">
+            <div class="relative border-b border-default transition-colors group-hover/row:bg-zinc-500/[0.04]" :style="rowBg">
               <template v-for="v in row.vacations" :key="v.id">
                 <button
                   v-if="bar(v)"
                   type="button"
-                  class="absolute top-2 h-6 z-[15] text-[10px] font-medium text-white px-2 truncate text-left ring-1 ring-inset ring-black/15 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"
+                  class="absolute top-[8px] z-[15] h-7 overflow-hidden px-2.5 text-left text-[11px] font-medium transition duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600"
                   :class="[
-                    STATUS_COLORS[v.status].bar,
-                    bar(v)!.cutLeft ? 'rounded-l-none' : 'rounded-l-md',
-                    bar(v)!.cutRight ? 'rounded-r-none' : 'rounded-r-md'
+                    STATUS_COLORS[v.status].pill,
+                    bar(v)!.cutLeft ? 'rounded-l-none' : 'rounded-l-lg',
+                    bar(v)!.cutRight ? 'rounded-r-none' : 'rounded-r-lg'
                   ]"
                   :style="{ left: `${bar(v)!.left}px`, width: `${bar(v)!.width}px` }"
                   :title="barTitle(v)"
                   @click="emit('select', { vacation: v, employee: row.employee })"
                 >
-                  {{ barLabel(v, bar(v)!.width) }}
+                  <span
+                    v-for="(c, i) in conflictSegs(v)"
+                    :key="i"
+                    class="conflict-stripes absolute inset-y-0"
+                    :style="{ left: `${c.left}px`, width: `${c.width}px` }"
+                  />
+                  <span class="relative block truncate leading-7">{{ barLabel(v, bar(v)!.width) }}</span>
                 </button>
               </template>
             </div>
@@ -265,10 +301,11 @@ function barTitle(v: Vacation) {
 
 <style scoped>
 .gantt {
-  --gantt-weekend: color-mix(in oklab, var(--ui-text-muted) 11%, transparent);
-  --gantt-line: color-mix(in oklab, var(--ui-text-muted) 20%, transparent);
+  --gantt-weekend: color-mix(in oklab, var(--ui-text-muted) 12%, transparent);
+  --gantt-line: color-mix(in oklab, var(--ui-text-muted) 18%, transparent);
 }
-.gantt-left-shadow {
-  box-shadow: 6px 0 8px -6px rgb(0 0 0 / 0.18);
+.conflict-stripes {
+  background: repeating-linear-gradient(-45deg, rgb(239 68 68 / 0.6) 0 5px, rgb(239 68 68 / 0.32) 5px 10px);
+  box-shadow: inset 0 0 0 1px rgb(220 38 38 / 0.75);
 }
 </style>

@@ -34,12 +34,30 @@ export function useDb(): DatabaseSync {
       status TEXT NOT NULL DEFAULT 'planned',
       note TEXT NOT NULL DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS conflicts (
+      employee_a INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      employee_b INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      PRIMARY KEY (employee_a, employee_b),
+      CHECK (employee_a < employee_b)
+    );
     CREATE INDEX IF NOT EXISTS idx_emp_dep ON employees(department_id);
     CREATE INDEX IF NOT EXISTS idx_vac_emp ON vacations(employee_id);
   `)
 
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM departments').get() as { n: number }
-  if (n === 0) seedDatabase(db)
+  if (n === 0) {
+    seedDatabase(db)
+    db.exec('PRAGMA user_version = 1')
+  } else {
+    // база создана до появления ограничений — один раз добавляем демо-пары (если сотрудники на месте)
+    const { user_version: ver } = db.prepare('PRAGMA user_version').get() as { user_version: number }
+    if (ver < 1) {
+      const exists = db.prepare('SELECT 1 FROM employees WHERE id = ?')
+      const ins = db.prepare('INSERT OR IGNORE INTO conflicts (employee_a, employee_b) VALUES (?, ?)')
+      for (const c of buildSeed().conflicts) if (exists.get(c.a) && exists.get(c.b)) ins.run(c.a, c.b)
+      db.exec('PRAGMA user_version = 1')
+    }
+  }
 
   return db
 }
@@ -58,6 +76,9 @@ export function seedDatabase(conn: DatabaseSync) {
       'INSERT INTO vacations (employee_id, start_date, end_date, status, note) VALUES (?, ?, ?, ?, ?)'
     )
     for (const v of seed.vacations) insVac.run(v.employeeId, v.startDate, v.endDate, v.status, v.note)
+
+    const insConf = conn.prepare('INSERT INTO conflicts (employee_a, employee_b) VALUES (?, ?)')
+    for (const c of seed.conflicts) insConf.run(c.a, c.b)
     conn.exec('COMMIT')
   } catch (err) {
     conn.exec('ROLLBACK')

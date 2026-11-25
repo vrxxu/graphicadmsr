@@ -158,3 +158,50 @@ export function maxSimultaneous(
 export function isOnVacation(employeeId: number, vacations: Vacation[], day: number): boolean {
   return vacations.some(v => v.employeeId === employeeId && dayNum(v.startDate) <= day && dayNum(v.endDate) >= day)
 }
+
+// ---------------------------------------------------------------------------
+// Ограничения «не может отсутствовать одновременно с»
+// ---------------------------------------------------------------------------
+
+export interface ConflictOverlap {
+  employeeId: number
+  otherId: number
+  vacationId: number
+  otherVacationId: number
+  /** первый и последний день пересечения (номера дней) */
+  s: number
+  e: number
+}
+
+/** Все пересечения отпусков у пар сотрудников, которым нельзя отсутствовать одновременно. */
+export function findConflictOverlaps(
+  pairs: { employeeId: number, otherId: number }[],
+  byEmployee: Map<number, Vacation[]>
+): ConflictOverlap[] {
+  const out: ConflictOverlap[] = []
+  for (const p of pairs) {
+    for (const a of byEmployee.get(p.employeeId) ?? []) {
+      for (const b of byEmployee.get(p.otherId) ?? []) {
+        const s = Math.max(dayNum(a.startDate), dayNum(b.startDate))
+        const e = Math.min(dayNum(a.endDate), dayNum(b.endDate))
+        if (s <= e) out.push({ employeeId: p.employeeId, otherId: p.otherId, vacationId: a.id, otherVacationId: b.id, s, e })
+      }
+    }
+  }
+  return out.sort((x, y) => x.s - y.s)
+}
+
+/** Отпуск → диапазоны дней, на которых он нарушает ограничение (для красной подсветки). */
+export function conflictRangesByVacation(items: ConflictOverlap[]): Map<number, { s: number, e: number }[]> {
+  const map = new Map<number, { s: number, e: number }[]>()
+  const add = (id: number, s: number, e: number) => {
+    const list = map.get(id)
+    if (list) list.push({ s, e })
+    else map.set(id, [{ s, e }])
+  }
+  for (const c of items) {
+    add(c.vacationId, c.s, c.e)
+    add(c.otherVacationId, c.s, c.e)
+  }
+  return map
+}

@@ -211,6 +211,23 @@ function buildVacations(employees: Employee[]): V[] {
   return out
 }
 
+/** Пары сотрудников, которым нельзя быть в отпуске одновременно (демо). */
+function buildConflicts(employees: Employee[]): { a: number, b: number }[] {
+  const byDept = (id: number) => employees.filter(e => e.departmentId === id)
+  const pair = (x?: Employee, y?: Employee) => (x && y ? [{ a: Math.min(x.id, y.id), b: Math.max(x.id, y.id) }] : [])
+  const d4 = byDept(4)
+  const d8 = byDept(8)
+  const d12 = byDept(12)
+  const d6 = byDept(6)
+  return [
+    ...pair(d4[0], d4[1]), // пересекаются в июле 2026 — будет красный фрагмент
+    ...pair(d4[1], d4[2]),
+    ...pair(d8[1], d8[2]), // пересекаются в августе 2026
+    ...pair(d12[1], d12[2]), // пересекаются в июне 2026
+    ...pair(d6[0], d6[1]) // пересекаются на границе апреля и мая 2026
+  ]
+}
+
 export function buildSeed() {
   const departments: Department[] = NODES.map((n, i) => ({
     id: n.id,
@@ -220,5 +237,5 @@ export function buildSeed() {
   }))
   const employees = buildEmployees()
   const vacations = buildVacations(employees).map((v, i) => ({ ...v, id: i + 1 }))
-  return { departments, employees, vacations }
+  return { departments, employees, vacations, conflicts: buildConflicts(employees) }
 }

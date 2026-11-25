@@ -12,6 +12,7 @@
   "engines": { "node": ">=22.13.0" },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.0",
+    "@internationalized/date": "^3.8.0",
     "@nuxt/ui": "^4.0.0",
     "nuxt": "^4.0.0",
     "tailwindcss": "^4.1.0"

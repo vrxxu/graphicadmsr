@@ -8,6 +8,11 @@ const { employees, departments, tree, vacationsByEmployee, refresh } = useSchedu
 const search = ref('')
 const deptFilter = ref<number | null>(null)
 
+function resetFilters() {
+  search.value = ''
+  deptFilter.value = null
+}
+
 const deptItems = computed(() => [
   { label: 'Все подразделения', value: 0 },
   ...flatten(tree.value).map(n => ({ label: `${'— '.repeat(n.depth)}${n.name}`, value: n.id }))
@@ -63,31 +68,51 @@ async function doDelete() {
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap items-end gap-3">
-      <h1 class="text-xl font-semibold mr-auto">Сотрудники</h1>
-      <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по ФИО или должности" class="w-72" />
-      <USelectMenu v-model="deptModel" :items="deptItems" value-key="value" class="w-80" />
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить</UButton>
+    <!-- заголовок -->
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold truncate">Сотрудники</h1>
+        <p class="text-sm text-muted truncate">Показано {{ rows.length }} из {{ employees.length }}</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить сотрудника</UButton>
+      </div>
     </div>
 
-    <UCard :ui="{ body: 'p-0 sm:p-0' }">
-      <UTable :data="rows" :columns="columns" class="max-h-[70vh]" @select="(_e: Event, row: any) => router.push(`/employees/${row.original.id}`)">
+    <!-- панель фильтров -->
+    <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-default bg-default p-2">
+      <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по ФИО или должности" class="w-full sm:w-72" />
+      <USelectMenu v-model="deptModel" :items="deptItems" value-key="value" class="w-full sm:w-80" />
+      <UButton class="ml-auto" icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" @click="resetFilters">Сбросить</UButton>
+    </div>
+
+    <section class="overflow-hidden rounded-2xl border border-default bg-default">
+      <UTable :data="rows" :columns="columns" :ui="{ tr: 'group cursor-pointer' }" class="max-h-[70vh]" @select="(_e: Event, row: any) => router.push(`/employees/${row.original.id}`)">
         <template #fullName-cell="{ row }">
-          <NuxtLink :to="`/employees/${row.original.id}`" class="font-medium text-primary hover:underline" @click.stop>
+          <NuxtLink :to="`/employees/${row.original.id}`" class="flex items-center gap-3 font-medium hover:text-primary" @click.stop>
+            <PersonAvatar :name="row.original.fullName" />
             {{ row.original.fullName }}
           </NuxtLink>
         </template>
+        <template #position-cell="{ row }"><span class="text-muted">{{ row.original.position }}</span></template>
+        <template #department-cell="{ row }"><span class="text-muted">{{ row.original.department }}</span></template>
+        <template #vacationsCount-cell="{ row }">
+          <span
+            class="inline-grid min-w-7 place-items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
+            :class="row.original.vacationsCount ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-500/10 text-muted'"
+          >{{ row.original.vacationsCount }}</span>
+        </template>
         <template #actions-cell="{ row }">
-          <div class="flex justify-end gap-1" @click.stop>
+          <div class="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100" @click.stop>
             <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
             <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="toDelete = row.original; confirmOpen = true" />
           </div>
         </template>
         <template #empty>
-          <div class="py-8 text-center text-muted">Сотрудники не найдены</div>
+          <div class="py-10 text-center text-sm text-muted">Сотрудники не найдены</div>
         </template>
       </UTable>
-    </UCard>
+    </section>
 
     <EmployeeFormModal v-model:open="formOpen" :employee="editing" @saved="refresh()" />
 

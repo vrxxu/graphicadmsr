@@ -39,6 +39,19 @@ const rows = computed(() => {
     })
 })
 
+const counts = computed(() => ({
+  total: rows.value.length,
+  approved: rows.value.filter(r => r.status === 'approved').length,
+  planned: rows.value.filter(r => r.status === 'planned').length,
+  moved: rows.value.filter(r => r.status === 'moved').length
+}))
+
+function resetFilters() {
+  search.value = ''
+  year.value = Number(todayIso().slice(0, 4))
+  statusFilter.value = 'all'
+}
+
 const columns = [
   { accessorKey: 'fullName', header: 'Сотрудник' },
   { accessorKey: 'department', header: 'Подразделение' },
@@ -91,34 +104,73 @@ async function remove(v: Vacation) {
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap items-end gap-3">
-      <h1 class="text-xl font-semibold mr-auto">Управление отпусками</h1>
-      <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по ФИО" class="w-64" />
-      <USelect v-model="year" :items="yearItems" class="w-36" />
-      <USelect v-model="statusFilter" :items="statusItems" class="w-48" />
-      <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить период</UButton>
+    <!-- заголовок -->
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold truncate">Управление отпусками</h1>
+        <p class="text-sm text-muted truncate">Периоды отпусков всех сотрудников</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <UButton icon="i-lucide-plus" @click="openForm(null)">Добавить отпуск</UButton>
+      </div>
     </div>
 
-    <UCard :ui="{ body: 'p-0 sm:p-0' }">
-      <UTable :data="rows" :columns="columns" :loading="loadStatus === 'pending'" class="max-h-[72vh]">
-        <template #startDate-cell="{ row }">{{ formatDate(row.original.startDate) }}</template>
-        <template #endDate-cell="{ row }">{{ formatDate(row.original.endDate) }}</template>
+    <!-- панель фильтров -->
+    <div class="flex flex-wrap items-center gap-2 rounded-2xl border border-default bg-default p-2">
+      <UInput v-model="search" icon="i-lucide-search" placeholder="Поиск по фамилии" class="w-full sm:w-56" />
+      <USelect v-model="year" :items="yearItems" class="w-36" />
+      <UTabs v-model="statusFilter" :items="statusItems" :content="false" size="sm" color="primary" variant="pill" class="w-auto" />
+      <UButton class="ml-auto" icon="i-lucide-rotate-ccw" color="neutral" variant="ghost" @click="resetFilters">Сбросить</UButton>
+    </div>
+
+    <!-- сводка -->
+    <div class="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="text-xs text-muted">Всего периодов</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ counts.total }}</div>
+      </div>
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="flex items-center gap-1.5 text-xs text-muted"><span class="size-1.5 rounded-full" :class="STATUS_COLORS.approved.dot" />Утверждены</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ counts.approved }}</div>
+      </div>
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="flex items-center gap-1.5 text-xs text-muted"><span class="size-1.5 rounded-full" :class="STATUS_COLORS.planned.dot" />Запланированы</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ counts.planned }}</div>
+      </div>
+      <div class="rounded-xl border border-default bg-default px-3.5 py-2.5">
+        <div class="flex items-center gap-1.5 text-xs text-muted"><span class="size-1.5 rounded-full" :class="STATUS_COLORS.moved.dot" />Перенесены</div>
+        <div class="mt-0.5 text-xl font-semibold tabular-nums">{{ counts.moved }}</div>
+      </div>
+    </div>
+
+    <section class="overflow-hidden rounded-2xl border border-default bg-default">
+      <UTable :data="rows" :columns="columns" :loading="loadStatus === 'pending'" :ui="{ tr: 'group' }" class="max-h-[72vh]">
+        <template #fullName-cell="{ row }">
+          <NuxtLink :to="`/employees/${row.original.employeeId}`" class="flex items-center gap-3 font-medium hover:text-primary">
+            <PersonAvatar :name="row.original.fullName" />
+            {{ row.original.fullName }}
+          </NuxtLink>
+        </template>
+        <template #department-cell="{ row }"><span class="text-muted">{{ row.original.department }}</span></template>
+        <template #startDate-cell="{ row }"><span class="tabular-nums">{{ formatDate(row.original.startDate) }}</span></template>
+        <template #endDate-cell="{ row }"><span class="tabular-nums">{{ formatDate(row.original.endDate) }}</span></template>
+        <template #days-cell="{ row }"><span class="tabular-nums text-muted">{{ row.original.days }}</span></template>
         <template #status-cell="{ row }">
           <UBadge :color="STATUS_COLORS[row.original.status as VacationStatus].badge" variant="subtle">
             {{ STATUS_LABELS[row.original.status as VacationStatus] }}
           </UBadge>
         </template>
         <template #actions-cell="{ row }">
-          <div class="flex justify-end gap-1">
+          <div class="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
             <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(row.original)" />
             <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(row.original)" />
           </div>
         </template>
         <template #empty>
-          <div class="py-8 text-center text-muted">Отпуска не найдены</div>
+          <div class="py-10 text-center text-sm text-muted">Отпуска не найдены</div>
         </template>
       </UTable>
-    </UCard>
+    </section>
 
     <VacationFormModal v-model:open="formOpen" :vacation="editing" @saved="refresh()" />
   </div>
