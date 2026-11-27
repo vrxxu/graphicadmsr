@@ -9,7 +9,8 @@ const links = computed(() => [
   { label: 'Мой календарь', icon: 'i-lucide-calendar-days', to: '/calendar', active: route.path.startsWith('/calendar') },
   { label: 'Сотрудники', icon: 'i-lucide-users', to: '/employees', active: route.path.startsWith('/employees') },
   { label: 'Подразделения', icon: 'i-lucide-network', to: '/departments', active: route.path.startsWith('/departments') },
-  { label: 'Отпуска', icon: 'i-lucide-tree-palm', to: '/vacations', active: route.path.startsWith('/vacations') }
+  { label: 'Отпуска', icon: 'i-lucide-tree-palm', to: '/vacations', active: route.path.startsWith('/vacations') },
+  { label: 'Печать графика', icon: 'i-lucide-printer', to: '/print', active: route.path.startsWith('/print') }
 ])
 
 const isDark = computed(() => colorMode.value === 'dark')
@@ -20,9 +21,9 @@ function toggleTheme() {
 
 <template>
   <UApp :locale="ru">
-    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 lg:flex">
+    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 lg:flex print:bg-white!">
       <!-- левая стенка: узкая колонка иконок, при наведении плавно раскрывается с подписями -->
-      <aside class="relative hidden w-16 shrink-0 lg:block">
+      <aside class="relative hidden w-16 shrink-0 lg:block print:hidden!">
         <div
           class="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col gap-6 overflow-hidden border-r border-default bg-default p-2.5 transition-[width,box-shadow] duration-300 ease-out hover:w-56 hover:shadow-2xl focus-within:w-56 focus-within:shadow-2xl"
         >
@@ -70,7 +71,7 @@ function toggleTheme() {
 
       <div class="min-w-0 flex-1">
         <!-- узкие экраны: компактная полоса сверху -->
-        <header class="sticky top-0 z-40 border-b border-default bg-default/90 backdrop-blur lg:hidden">
+        <header class="sticky top-0 z-40 border-b border-default bg-default/90 backdrop-blur lg:hidden print:hidden!">
           <div class="flex items-center gap-2 px-3 py-2">
             <span class="grid size-7 place-items-center rounded-lg bg-emerald-600 text-white">
               <UIcon name="i-lucide-calendar-range" class="size-4" />
@@ -95,7 +96,7 @@ function toggleTheme() {
         </header>
 
         <main>
-          <UContainer class="max-w-[1600px] py-5">
+          <UContainer class="max-w-[1600px] py-5 print:max-w-none! print:p-0!">
             <NuxtPage />
           </UContainer>
         </main>

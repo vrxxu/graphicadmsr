@@ -127,6 +127,7 @@ async function reset() {
             </div>
           </div>
           <div class="ml-auto flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+            <UButton icon="i-lucide-printer" color="neutral" variant="ghost" size="sm" aria-label="Печать графика подразделения" :to="{ path: '/print', query: { dept: n.id } }" />
             <UButton icon="i-lucide-folder-plus" color="neutral" variant="ghost" size="sm" aria-label="Добавить вложенное" @click="openForm(null, n.id)" />
             <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" aria-label="Изменить" @click="openForm(departments.find(d => d.id === n.id)!)" />
             <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Удалить" @click="remove(departments.find(d => d.id === n.id)!)" />

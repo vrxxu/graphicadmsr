@@ -10,6 +10,7 @@ export interface Employee {
   fullName: string
   position: string
   departmentId: number
+  tabNumber: string
 }
 
 /** Пара сотрудников, которые не могут отсутствовать одновременно (employeeId < otherId). */

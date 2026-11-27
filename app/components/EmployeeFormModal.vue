@@ -9,13 +9,14 @@ const { departments } = useSchedule()
 const toast = useToast()
 const saving = ref(false)
 
-const form = reactive({ fullName: '', position: '', departmentId: null as number | null })
+const form = reactive({ fullName: '', position: '', departmentId: null as number | null, tabNumber: '' })
 
 watch(open, (isOpen) => {
   if (!isOpen) return
   form.fullName = props.employee?.fullName ?? ''
   form.position = props.employee?.position ?? ''
   form.departmentId = props.employee?.departmentId ?? null
+  form.tabNumber = props.employee?.tabNumber ?? ''
 })
 
 const deptItems = computed(() =>
@@ -53,6 +54,9 @@ async function submit() {
         </UFormField>
         <UFormField label="Должность" required>
           <UInput v-model="form.position" class="w-full" />
+        </UFormField>
+        <UFormField label="Табельный номер" description="Нужен для печатной формы графика отпусков (Т-7)">
+          <UInput v-model="form.tabNumber" inputmode="numeric" class="w-full sm:w-48" />
         </UFormField>
         <UFormField label="Подразделение" required>
           <USelectMenu v-model="form.departmentId" :items="deptItems" value-key="value" placeholder="Выберите подразделение" class="w-full" />

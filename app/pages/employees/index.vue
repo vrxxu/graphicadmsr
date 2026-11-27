@@ -38,6 +38,7 @@ const rows = computed(() => {
 
 const columns = [
   { accessorKey: 'fullName', header: 'ФИО' },
+  { accessorKey: 'tabNumber', header: 'Таб. №' },
   { accessorKey: 'position', header: 'Должность' },
   { accessorKey: 'department', header: 'Подразделение' },
   { accessorKey: 'vacationsCount', header: 'Отпусков' },
@@ -94,6 +95,7 @@ async function doDelete() {
             {{ row.original.fullName }}
           </NuxtLink>
         </template>
+        <template #tabNumber-cell="{ row }"><span class="tabular-nums text-muted">{{ row.original.tabNumber || '—' }}</span></template>
         <template #position-cell="{ row }"><span class="text-muted">{{ row.original.position }}</span></template>
         <template #department-cell="{ row }"><span class="text-muted">{{ row.original.department }}</span></template>
         <template #vacationsCount-cell="{ row }">

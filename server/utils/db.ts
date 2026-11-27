@@ -24,7 +24,8 @@ export function useDb(): DatabaseSync {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
       position TEXT NOT NULL,
-      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT
+      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+      tab_number TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS vacations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,6 +44,12 @@ export function useDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_emp_dep ON employees(department_id);
     CREATE INDEX IF NOT EXISTS idx_vac_emp ON vacations(employee_id);
   `)
+
+  // база создана до появления табельных номеров — добавляем колонку
+  const empCols = db.prepare('PRAGMA table_info(employees)').all() as { name: string }[]
+  if (!empCols.some(c => c.name === 'tab_number')) {
+    db.exec("ALTER TABLE employees ADD COLUMN tab_number TEXT NOT NULL DEFAULT ''")
+  }
 
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM departments').get() as { n: number }
   if (n === 0) {
